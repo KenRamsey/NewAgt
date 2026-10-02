@@ -1,0 +1,16 @@
+[package]
+name = "newagt-cli"
+version = "0.1.0"
+description = "CLI for NewAgt — read, validate, and convert AGT games"
+readme = "../../README.md"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "newagt"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+newagt-core = { path = "../newagt-core" }

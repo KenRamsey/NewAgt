@@ -1,0 +1,19 @@
+# Rust / Cargo
+/target/
+**/*.rs.bk
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local fixtures (large downloads)
+/tests/fixtures/**/*.DA*
+/tests/fixtures/**/*.D$$
