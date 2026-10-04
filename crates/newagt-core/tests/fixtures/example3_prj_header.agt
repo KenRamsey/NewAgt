@@ -1,0 +1,17 @@
+PrjSect
+{
+Name
+"vision7"
+Scenario
+"1234"
+Site
+"ft ap hill"
+Time
+1992 140 16 34 15 341
+LatLong
+11 27 34.323000 "N" 47 57 58.021000 "E"
+Comment
+"project section"
+Comment
+"data accurate to +-20%"
+}

@@ -1,7 +1,7 @@
 [package]
 name = "newagt-core"
 version = "0.1.0"
-description = "AGT game file parser library"
+description = "Imagery ground truth AGT parser library"
 readme = "../../README.md"
 edition.workspace = true
 license.workspace = true

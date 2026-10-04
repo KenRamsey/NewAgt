@@ -1,0 +1,13 @@
+Agt
+ {
+  PrjSect
+   {
+    Name      "trn_demo_belv0509"
+    Scenario  "12345_1234"
+    Site      "belv0509"
+    Time      2005 256  8 17 38 280
+    LatLong   38 52 53 "N" 77 02 12 "W"
+    Comment   "This is demo PrjSect Comment 1"
+    Keyword   "This is demo PrjSect Keyword 1"
+   }
+ }

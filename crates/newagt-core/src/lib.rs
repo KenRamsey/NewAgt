@@ -1,6 +1,14 @@
 //! Core library for parsing imagery ground truth AGT containers.
-//!
-//! Milestone M0: crate scaffold only; format readers come after `Agt-1992.pdf` alignment.
+
+pub mod keyword;
+pub mod lex;
+pub mod span;
+pub mod token;
+
+pub use keyword::Keyword;
+pub use lex::{lex, lex_tokens, LexError, LexTokenIter};
+pub use span::Span;
+pub use token::{Token, TokenKind};
 
 /// Library version (matches `Cargo.toml`).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

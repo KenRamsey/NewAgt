@@ -40,7 +40,7 @@
 
 ---
 
-## M1 — Lexer and token model
+## M1 — Lexer and token model (done)
 
 **Deliverables**
 
