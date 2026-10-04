@@ -22,6 +22,7 @@ pub enum AgtItem {
     PrjSect(PrjSect),
     SenSect(SenSect),
     TgtSect(TgtSect),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -33,7 +34,7 @@ pub struct PrjSect {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PrjItem {
     Field(Field),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,7 +47,7 @@ pub struct SenSect {
 pub enum SenSectItem {
     Field(Field),
     SenUpd(SenUpd),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -58,7 +59,7 @@ pub struct SenUpd {
 #[derive(Debug, Clone, PartialEq)]
 pub enum SenUpdItem {
     Field(Field),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -71,7 +72,7 @@ pub struct TgtSect {
 pub enum TgtSectItem {
     Field(Field),
     TgtUpd(TgtUpd),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -84,7 +85,7 @@ pub struct TgtUpd {
 pub enum TgtUpdItem {
     Field(Field),
     Tgt(Tgt),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,7 +99,7 @@ pub enum TgtItem {
     Field(Field),
     TgtSenRel(TgtSenRel),
     TgtAbs(TgtAbs),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,7 +111,7 @@ pub struct TgtSenRel {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TgtSenRelItem {
     Field(Field),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -122,7 +123,7 @@ pub struct TgtAbs {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TgtAbsItem {
     Field(Field),
-    Unknown(UnknownField),
+    Unknown(UnknownStatement),
 }
 
 /// Scalar or composite field: keyword plus typed value (raw token fallback when needed).
@@ -135,9 +136,9 @@ pub struct Field {
     pub tokens: Vec<Token>,
 }
 
-/// Unrecognized keyword and trailing value tokens until the next sibling.
+/// Unrecognized keyword and trailing value tokens until the next sibling keyword.
 #[derive(Debug, Clone, PartialEq)]
-pub struct UnknownField {
+pub struct UnknownStatement {
     pub name: String,
     pub keyword_span: Span,
     pub values: Vec<Token>,

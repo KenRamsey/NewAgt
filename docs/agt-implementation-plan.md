@@ -81,7 +81,7 @@
 
 ---
 
-## M4 — Extension bucket (wild format)
+## M4 — Extension bucket (wild format) (done)
 
 **Deliverables**
 
@@ -92,6 +92,8 @@
 **Policy:** Default **load success** with warnings for spec mismatches ([wild format](agt-real-world-format.md)).
 
 **Tests:** AGTJ `Prototype.agt` snippet — multiple Comment/Keyword lines without truncation at 20 (Rust vectors, not AGTJ caps).
+
+**Exit:** `parse_with_warnings`, `UnknownStatement` in AST, fixture `prototype_comment_keyword_burst.agt`. **Met.**
 
 ---
 

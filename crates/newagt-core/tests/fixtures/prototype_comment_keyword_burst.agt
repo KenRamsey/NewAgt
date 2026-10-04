@@ -1,0 +1,62 @@
+Agt
+ {
+  PrjSect
+   {
+    Name      "trn_demo_belv0509"
+    Scenario  "12345_1234"
+    Site      "belv0509"
+    Time      2005 256  8 17 38 280
+    LatLong   38 52 53 "N" 77 02 12 "W"
+    Comment   "This is demo PrjSect Comment 1"
+    Comment   "This is demo PrjSect Comment 2"
+    Comment   "This is demo PrjSect Comment 3"
+    Comment   "This is demo PrjSect Comment 4"
+    Comment   "This is demo PrjSect Comment 5"
+    Keyword   "This is demo PrjSect Keyword 1"
+    Keyword   "This is demo PrjSect Keyword 2"
+    Keyword   "This is demo PrjSect Keyword 3"
+    Keyword   "This is demo PrjSect Keyword 4"
+    Keyword   "This is demo PrjSect Keyword 5"
+    CustomTrainerTag  "corpus-sidecar"  99
+   }
+  SenSect
+   {
+    Name     "vis1"
+    Fov      40.00 30.00
+    Comment  "This is demo SenSect Comment 1"
+    Comment  "This is demo SenSect Comment 2"
+    Comment  "This is demo SenSect Comment 3"
+    Comment  "This is demo SenSect Comment 4"
+    Comment  "This is demo SenSect Comment 5"
+    Keyword  "This is demo SenSect Keyword 1"
+    Keyword  "This is demo SenSect Keyword 2"
+    Keyword  "This is demo SenSect Keyword 3"
+    Keyword  "This is demo SenSect Keyword 4"
+    Keyword  "This is demo SenSect Keyword 5" 
+    SenUpd
+     {
+      Time      2005 256  9  9 56 637
+      Fov       40.0 30.0
+      Azimuth   10.23
+      Elevation 1.2
+      Roll      -1.2
+      LatLong   38 52 53 "N" 77 02 12 "W"
+      Utm       323339 4305586 26 "18S" "WGS84"
+      Range     520.34
+      PixRange   10  10  43.4  
+      PixRange  630  10 22.34  
+      PixRange   10 470   882  
+      PixRange  630 470  1288  
+      Comment  "This is demo SenUpd Frame1 Comment 1"
+      Comment  "This is demo SenUpd Frame1 Comment 2"
+      Comment  "This is demo SenUpd Frame1 Comment 3"
+      Comment  "This is demo SenUpd Frame1 Comment 4"
+      Comment  "This is demo SenUpd Frame1 Comment 5"
+      Keyword  "Frame# 1"
+      Keyword  "UTMGrid 18S"
+      Keyword  "This is demo SenUpd Frame1 Keyword 3"
+      Keyword  "This is demo SenUpd Frame1 Keyword 4"
+      Keyword  "This is demo SenUpd Frame1 Keyword 5"
+     }
+   }
+ }

@@ -3,8 +3,9 @@
 use crate::ast::{
     Agt, AgtItem, Document, Field, PrjItem, PrjSect, SenSect, SenSectItem, SenUpd, SenUpdItem,
     Tgt, TgtAbs, TgtAbsItem, TgtItem, TgtSect, TgtSectItem, TgtSenRel, TgtSenRelItem, TgtUpd,
-    TgtUpdItem, UnknownField,
+    TgtUpdItem, UnknownStatement,
 };
+use crate::extension::{ParseResult, ParseWarning, ParseWarningKind};
 use crate::keyword::Keyword;
 use crate::lex::lex;
 use crate::span::Span;
@@ -64,8 +65,13 @@ impl std::fmt::Display for Found {
     }
 }
 
-/// Parse a complete AGT document (`Agt { … }` root).
+/// Parse a complete AGT document (`Agt { … }` root), discarding non-fatal warnings.
 pub fn parse(source: &str) -> Result<Document, ParseError> {
+    parse_with_warnings(source).map(|result| result.document)
+}
+
+/// Parse and collect [`ParseWarning`] for unknown keywords and odd placements.
+pub fn parse_with_warnings(source: &str) -> Result<ParseResult, ParseError> {
     let tokens = lex(source).map_err(ParseError::Lex)?;
     let mut parser = Parser::new(tokens);
     let root = parser.parse_agt()?;
@@ -73,17 +79,40 @@ pub fn parse(source: &str) -> Result<Document, ParseError> {
         let span = parser.peek().unwrap().span;
         return Err(ParseError::ExtraInput { span });
     }
-    Ok(Document { root })
+    Ok(ParseResult {
+        document: Document { root },
+        warnings: parser.warnings,
+        extensions: Vec::new(),
+    })
 }
 
 struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    warnings: Vec<ParseWarning>,
 }
 
 impl Parser {
     fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
+        Self {
+            tokens,
+            pos: 0,
+            warnings: Vec::new(),
+        }
+    }
+
+    fn push_warning(&mut self, kind: ParseWarningKind, span: Span, name: &str) {
+        let message = match kind {
+            ParseWarningKind::UnknownKeyword => format!("unrecognized keyword `{name}`"),
+            ParseWarningKind::OddPlacement => format!(
+                "keyword `{name}` not expected here; preserved as UnknownStatement"
+            ),
+        };
+        self.warnings.push(ParseWarning {
+            kind,
+            span,
+            message,
+        });
     }
 
     fn at_end(&self) -> bool {
@@ -158,12 +187,28 @@ impl Parser {
         })
     }
 
-    fn parse_unknown_field(&mut self, name: String, keyword_span: Span) -> UnknownField {
+    fn parse_unknown_statement(
+        &mut self,
+        name: String,
+        keyword_span: Span,
+        warning: Option<ParseWarningKind>,
+    ) -> UnknownStatement {
+        if let Some(kind) = warning {
+            self.push_warning(kind, keyword_span, &name);
+        }
         let values = self.consume_value_tokens();
-        UnknownField {
+        UnknownStatement {
             name,
             keyword_span,
             values,
+        }
+    }
+
+    fn keyword_name(kind: TokenKind) -> Option<String> {
+        match kind {
+            TokenKind::Keyword(kw) => Some(kw.to_string()),
+            TokenKind::UnknownKeyword(name) => Some(name),
+            _ => None,
         }
     }
 
@@ -189,8 +234,11 @@ impl Parser {
     }
 
     fn parse_agt_item(&mut self) -> Result<AgtItem, ParseError> {
-        let tok = self.peek().ok_or_else(|| self.unexpected("section keyword"))?;
-        match &tok.kind {
+        let tok = self
+            .peek()
+            .ok_or_else(|| self.unexpected("section keyword"))?
+            .clone();
+        match tok.kind {
             TokenKind::Keyword(Keyword::PrjSect) => {
                 Ok(AgtItem::PrjSect(self.parse_prj_sect()?))
             }
@@ -205,16 +253,23 @@ impl Parser {
                 expected: "`PrjSect`, `SenSect`, or `TgtSect`",
                 found: Found::Token(TokenKind::Keyword(Keyword::Tgt)),
             }),
-            TokenKind::Keyword(kw) => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "`PrjSect`, `SenSect`, or `TgtSect`",
-                found: Found::Token(TokenKind::Keyword(*kw)),
-            }),
-            TokenKind::UnknownKeyword(name) => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "`PrjSect`, `SenSect`, or `TgtSect`",
-                found: Found::Token(TokenKind::UnknownKeyword(name.clone())),
-            }),
+            TokenKind::Keyword(kw) => {
+                let name = kw.to_string();
+                self.bump();
+                Ok(AgtItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
+            }
+            TokenKind::UnknownKeyword(name) => {
+                self.bump();
+                Ok(AgtItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::UnknownKeyword),
+                )))
+            }
             _ => Err(self.unexpected("section keyword")),
         }
     }
@@ -248,14 +303,19 @@ impl Parser {
                 | Keyword::Comment
                 | Keyword::Keyword),
             ) => Ok(PrjItem::Field(self.parse_field(kw, tok.span)?)),
-            TokenKind::UnknownKeyword(name) => {
-                Ok(PrjItem::Unknown(self.parse_unknown_field(name, tok.span)))
+            TokenKind::UnknownKeyword(name) => Ok(PrjItem::Unknown(self.parse_unknown_statement(
+                name,
+                tok.span,
+                Some(ParseWarningKind::UnknownKeyword),
+            ))),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(PrjItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
             }
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "project field keyword",
-                found: Found::Token(other),
-            }),
         }
     }
 
@@ -286,20 +346,20 @@ impl Parser {
         }
         let tok = self.bump();
         match tok.kind {
-            TokenKind::Keyword(kw @ (Keyword::Comment | Keyword::Name | Keyword::Fov)) => {
+            TokenKind::Keyword(kw @ (Keyword::Comment | Keyword::Name | Keyword::Fov | Keyword::Keyword)) => {
                 Ok(SenSectItem::Field(self.parse_field(kw, tok.span)?))
             }
-            TokenKind::Keyword(Keyword::Keyword) => {
-                Ok(SenSectItem::Field(self.parse_field(Keyword::Keyword, tok.span)?))
+            TokenKind::UnknownKeyword(name) => Ok(SenSectItem::Unknown(
+                self.parse_unknown_statement(name, tok.span, Some(ParseWarningKind::UnknownKeyword)),
+            )),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(SenSectItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
             }
-            TokenKind::UnknownKeyword(name) => {
-                Ok(SenSectItem::Unknown(self.parse_unknown_field(name, tok.span)))
-            }
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "sensor section field or `SenUpd`",
-                found: Found::Token(other),
-            }),
         }
     }
 
@@ -329,16 +389,22 @@ impl Parser {
                 | Keyword::Utm
                 | Keyword::Range
                 | Keyword::PixRange
+                | Keyword::Fov
                 | Keyword::Keyword),
             ) => Ok(SenUpdItem::Field(self.parse_field(kw, tok.span)?)),
-            TokenKind::UnknownKeyword(name) => {
-                Ok(SenUpdItem::Unknown(self.parse_unknown_field(name, tok.span)))
+            TokenKind::UnknownKeyword(name) => Ok(SenUpdItem::Unknown(self.parse_unknown_statement(
+                name,
+                tok.span,
+                Some(ParseWarningKind::UnknownKeyword),
+            ))),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(SenUpdItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
             }
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "sensor update field keyword",
-                found: Found::Token(other),
-            }),
         }
     }
 
@@ -372,14 +438,17 @@ impl Parser {
             TokenKind::Keyword(kw @ (Keyword::Comment | Keyword::Keyword)) => {
                 Ok(TgtSectItem::Field(self.parse_field(kw, tok.span)?))
             }
-            TokenKind::UnknownKeyword(name) => {
-                Ok(TgtSectItem::Unknown(self.parse_unknown_field(name, tok.span)))
+            TokenKind::UnknownKeyword(name) => Ok(TgtSectItem::Unknown(
+                self.parse_unknown_statement(name, tok.span, Some(ParseWarningKind::UnknownKeyword)),
+            )),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(TgtSectItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
             }
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "`Comment` or `TgtUpd`",
-                found: Found::Token(other),
-            }),
         }
     }
 
@@ -409,14 +478,19 @@ impl Parser {
             TokenKind::Keyword(kw @ (Keyword::Comment | Keyword::Time | Keyword::Keyword)) => {
                 Ok(TgtUpdItem::Field(self.parse_field(kw, tok.span)?))
             }
-            TokenKind::UnknownKeyword(name) => {
-                Ok(TgtUpdItem::Unknown(self.parse_unknown_field(name, tok.span)))
+            TokenKind::UnknownKeyword(name) => Ok(TgtUpdItem::Unknown(self.parse_unknown_statement(
+                name,
+                tok.span,
+                Some(ParseWarningKind::UnknownKeyword),
+            ))),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(TgtUpdItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
             }
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "`Comment`, `Time`, or `Tgt`",
-                found: Found::Token(other),
-            }),
         }
     }
 
@@ -460,14 +534,19 @@ impl Parser {
                 | Keyword::PixBox
                 | Keyword::Keyword),
             ) => Ok(TgtItem::Field(self.parse_field(kw, tok.span)?)),
-            TokenKind::UnknownKeyword(name) => {
-                Ok(TgtItem::Unknown(self.parse_unknown_field(name, tok.span)))
+            TokenKind::UnknownKeyword(name) => Ok(TgtItem::Unknown(self.parse_unknown_statement(
+                name,
+                tok.span,
+                Some(ParseWarningKind::UnknownKeyword),
+            ))),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(TgtItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
             }
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "target field or nested container",
-                found: Found::Token(other),
-            }),
         }
     }
 
@@ -496,15 +575,17 @@ impl Parser {
                 | Keyword::Comment
                 | Keyword::Keyword),
             ) => Ok(TgtSenRelItem::Field(self.parse_field(kw, tok.span)?)),
-            TokenKind::UnknownKeyword(name) => Ok(TgtSenRelItem::Unknown(self.parse_unknown_field(
-                name,
-                tok.span,
-            ))),
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "TgtSenRel field keyword",
-                found: Found::Token(other),
-            }),
+            TokenKind::UnknownKeyword(name) => Ok(TgtSenRelItem::Unknown(
+                self.parse_unknown_statement(name, tok.span, Some(ParseWarningKind::UnknownKeyword)),
+            )),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(TgtSenRelItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
+            }
         }
     }
 
@@ -534,14 +615,19 @@ impl Parser {
                 | Keyword::Comment
                 | Keyword::Keyword),
             ) => Ok(TgtAbsItem::Field(self.parse_field(kw, tok.span)?)),
-            TokenKind::UnknownKeyword(name) => {
-                Ok(TgtAbsItem::Unknown(self.parse_unknown_field(name, tok.span)))
+            TokenKind::UnknownKeyword(name) => Ok(TgtAbsItem::Unknown(self.parse_unknown_statement(
+                name,
+                tok.span,
+                Some(ParseWarningKind::UnknownKeyword),
+            ))),
+            other => {
+                let name = Self::keyword_name(other.clone()).unwrap_or_else(|| "<?>".to_string());
+                Ok(TgtAbsItem::Unknown(self.parse_unknown_statement(
+                    name,
+                    tok.span,
+                    Some(ParseWarningKind::OddPlacement),
+                )))
             }
-            other => Err(ParseError::Unexpected {
-                span: tok.span,
-                expected: "TgtAbs field keyword",
-                found: Found::Token(other),
-            }),
         }
     }
 }
@@ -599,5 +685,49 @@ mod unit_tests {
         let src = r#"Agt { PrjSect { Time 1992 140 16 } } }"#;
         let err = parse(src).unwrap_err();
         assert!(matches!(err, ParseError::Value(_)));
+    }
+
+    #[test]
+    fn keyword_and_comment_coexist_in_prj() {
+        let src = r#"Agt {
+  PrjSect {
+    Comment "note-a"
+    Keyword "tag-a"
+    Comment "note-b"
+    Keyword "tag-b"
+  }
+}"#;
+        let doc = parse(src).expect("parse");
+        let crate::ast::AgtItem::PrjSect(prj) = &doc.root.items[0] else {
+            panic!("PrjSect");
+        };
+        assert_eq!(prj.items.len(), 4);
+        assert!(matches!(
+            &prj.items[0],
+            crate::ast::PrjItem::Field(f) if f.keyword == Keyword::Comment
+        ));
+        assert!(matches!(
+            &prj.items[1],
+            crate::ast::PrjItem::Field(f) if f.keyword == Keyword::Keyword
+        ));
+    }
+
+    #[test]
+    fn unknown_keyword_becomes_unknown_statement_with_warning() {
+        let src = r#"Agt { PrjSect { CustomTag "payload" 42 } }"#;
+        let result = parse_with_warnings(src).expect("parse");
+        assert_eq!(result.warnings.len(), 1);
+        assert_eq!(
+            result.warnings[0].kind,
+            ParseWarningKind::UnknownKeyword
+        );
+        let crate::ast::AgtItem::PrjSect(prj) = &result.document.root.items[0] else {
+            panic!("PrjSect");
+        };
+        let crate::ast::PrjItem::Unknown(stmt) = &prj.items[0] else {
+            panic!("UnknownStatement");
+        };
+        assert_eq!(stmt.name, "CustomTag");
+        assert_eq!(stmt.values.len(), 2);
     }
 }

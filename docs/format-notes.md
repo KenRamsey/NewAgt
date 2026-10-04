@@ -10,4 +10,13 @@ See also:
 - [agt-implementation-plan.md](agt-implementation-plan.md) — NewAgt milestones  
 - [agt-real-world-format.md](agt-real-world-format.md) — COMMENT/KEYWORD expectations  
 
-_No layout deltas recorded yet (M0 scaffold)._
+## M4 — extension bucket (stub)
+
+| Item | NewAgt |
+|------|--------|
+| `Keyword` string field | First-class `Field` with `Keyword::Keyword` at every level that accepts `Comment` |
+| Unknown corpus keywords | `UnknownStatement` + `ParseWarningKind::UnknownKeyword` |
+| Misplaced PDF keywords | Preserved as `UnknownStatement` + `ParseWarningKind::OddPlacement` |
+| Typed corpus hooks | `ExtensionRecord::Uninterpreted` on `ParseResult.extensions` (empty until inventory) |
+
+Load API: `parse()` (warnings discarded) and `parse_with_warnings()` ([wild format](agt-real-world-format.md)).
