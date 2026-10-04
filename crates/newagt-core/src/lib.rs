@@ -2,6 +2,7 @@
 
 pub mod ast;
 pub mod bbox;
+pub mod dataset_layout;
 pub mod dump;
 pub mod extension;
 pub mod frames;
@@ -17,6 +18,9 @@ pub mod validate;
 pub mod value;
 
 pub use ast::{Document, UnknownStatement};
+pub use dataset_layout::{
+    scan_classic_dataset_pairs, DatasetPairRow, MissingSideFlags,
+};
 pub use bbox::{
     resolve_bboxes, tgtdb_get_rect, BboxError, BboxMethod, BboxProvenance, BBoxIndex, BBoxOptions,
     TargetBBox, TargetBBoxRecord, TgtDatDb, TgtDatEntry, TgtDatError,

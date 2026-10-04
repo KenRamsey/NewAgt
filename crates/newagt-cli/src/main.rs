@@ -7,8 +7,9 @@ use std::process::ExitCode;
 use newagt_core::{
     build_frame_index, dump_document, export_parse_result, format_frame_line, format_info,
     format_info_batch_line, format_report_json, format_report_text, resolve_bboxes,
-    sections_present, summarize_document, validate, BboxMethod, BBoxOptions, FrameIndexOptions,
-    JsonExportOptions, ParseOptions, ParseProfile,
+    scan_classic_dataset_pairs, sections_present, summarize_document, validate, BboxMethod,
+    BBoxOptions, DatasetPairRow, FrameIndexOptions, JsonExportOptions, MissingSideFlags,
+    ParseOptions, ParseProfile,
 };
 
 #[derive(Parser)]
@@ -34,6 +35,35 @@ struct Cli {
 enum ReportFormat {
     Text,
     Json,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum MissingSideCli {
+    /// Report `.agt` files with no matching `.arf` (same basename).
+    Agt,
+    /// Report `.arf` files with no matching `.agt`.
+    Arf,
+    /// Report both orphan kinds.
+    Both,
+}
+
+impl From<MissingSideCli> for MissingSideFlags {
+    fn from(v: MissingSideCli) -> Self {
+        match v {
+            MissingSideCli::Agt => MissingSideFlags {
+                report_missing_agt: true,
+                report_missing_arf: false,
+            },
+            MissingSideCli::Arf => MissingSideFlags {
+                report_missing_agt: false,
+                report_missing_arf: true,
+            },
+            MissingSideCli::Both => MissingSideFlags {
+                report_missing_agt: true,
+                report_missing_arf: true,
+            },
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -117,6 +147,15 @@ enum Commands {
         #[arg(long)]
         spans: bool,
     },
+    /// List ARF/AGT basename pairs in a classic per-sensor dataset layout.
+    Pairs {
+        /// Dataset root (one subdirectory per sensor, each with `arf/` and `agt/`).
+        #[arg(long, value_name = "DIR")]
+        dataset_root: PathBuf,
+        /// Also report orphan files: `agt`, `arf`, or `both` sides.
+        #[arg(long, value_enum, value_name = "SIDE")]
+        missing: Option<MissingSideCli>,
+    },
 }
 
 fn main() -> ExitCode {
@@ -174,6 +213,13 @@ fn main() -> ExitCode {
             },
         ),
         Commands::ToJson { path, output, spans } => run_to_json(&path, parse_opts, output, spans),
+        Commands::Pairs {
+            dataset_root,
+            missing,
+        } => run_pairs(
+            &dataset_root,
+            missing.map(Into::into).unwrap_or_default(),
+        ),
     }
 }
 
@@ -514,6 +560,55 @@ fn run_validate(
         ExitCode::SUCCESS
     } else {
         ExitCode::from(1)
+    }
+}
+
+fn format_pair_line(row: &DatasetPairRow) -> String {
+    let arf = row
+        .arf_path
+        .as_ref()
+        .map(|p| p.display().to_string())
+        .unwrap_or_default();
+    let agt = row
+        .agt_path
+        .as_ref()
+        .map(|p| p.display().to_string())
+        .unwrap_or_default();
+    format!("{}\t{}\t{}\t{}", row.sensor, arf, agt, row.stem)
+}
+
+fn run_pairs(dataset_root: &Path, missing: MissingSideFlags) -> ExitCode {
+    let meta = match fs::metadata(dataset_root) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("newagt pairs: {}: {e}", dataset_root.display());
+            return ExitCode::from(1);
+        }
+    };
+    if !meta.is_dir() {
+        eprintln!(
+            "newagt pairs: {}: not a directory (expected classic dataset root)",
+            dataset_root.display()
+        );
+        return ExitCode::from(2);
+    }
+
+    match scan_classic_dataset_pairs(dataset_root, missing) {
+        Ok(rows) => {
+            let mut text = String::new();
+            for row in &rows {
+                text.push_str(&format_pair_line(row));
+                text.push('\n');
+            }
+            if write_stdout(&text).is_err() {
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("newagt pairs: {}: {e}", dataset_root.display());
+            ExitCode::from(1)
+        }
     }
 }
 

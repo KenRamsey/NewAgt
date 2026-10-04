@@ -26,6 +26,33 @@ When **N is unset**, behavior matches the original M8 frame index (`max(sen, tgt
 
 `FrameIndex::authority_frame_count` echoes the option used to build the index (for reporting).
 
+## Dataset layout (classic ARF/AGT pairing)
+
+Ken’s training datasets often use a **fixed directory shape** (names vary; paths stay on your storage, not in git):
+
+```text
+$DATASET_ROOT/                 # directory name = dataset id
+  $SENSOR/                      # one subdirectory per sensor
+    arf/
+      <stem>.arf
+    agt/
+      <stem>.agt
+```
+
+**Pairing rule:** for each sensor, files under `arf/` and `agt/` match by **basename** (filename without extension). Example: `arf/clip_one.arf` pairs with `agt/clip_one.agt`; the shared stem is `clip_one`.
+
+- Only regular files with extensions `.arf` / `.agt` (case-insensitive) participate.
+- A sensor may omit `arf/` or `agt/`; the scanner treats the missing side as empty for that sensor.
+- Orphans (`.arf` without `.agt`, or the reverse) are ignored unless you ask for them (see below).
+
+**CLI inventory (no parsing):** `newagt pairs --dataset-root /path/to/dataset` walks this layout and prints tab-separated lines:
+
+`sensor` → `arf_path` → `agt_path` → `stem`
+
+Paths are **runtime output** from your machine; do not commit them. Use `--missing agt`, `--missing arf`, or `--missing both` to include orphan rows (empty column for the missing side).
+
+**Future: ARF reader → frame count:** when an ARF header reader exists, the frame count **N** from each paired `.arf` can feed global or per-file `--frame-count` for indexing and validation. Until then, N remains optional and external; AGT update lists are still the payload source.
+
 ## Future: ARF reader
 
 ARF metadata may eventually provide the canonical frame count. Until an ARF reader exists, **user-supplied N is optional authority** for indexing only; AGT list contents remain the source of update payloads. When ARF support lands, the same `expected_frame_count` field can be populated from ARF instead of (or in addition to) CLI flags, with documented precedence.

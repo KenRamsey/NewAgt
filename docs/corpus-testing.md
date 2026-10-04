@@ -2,6 +2,8 @@
 
 Ken’s imagery ground-truth files live on a **local RAID or bulk storage mount** you choose—not in this repository. Typical layouts are **intentionally messy**: `.agt` files sit at irregular depths, mixed with datasets, exports, and non-AGT assets. Use that tree for **real-world** parser and CLI checks; keep checked-in fixtures under `tests/fixtures/` for CI.
 
+Some datasets also follow the **classic per-sensor layout** (`$DATASET_ROOT/$SENSOR/arf/` + `agt/`, basename pairing between `.arf` and `.agt`). That convention is documented in [arf-frame-authority.md](arf-frame-authority.md#dataset-layout-classic-arfagt-pairing); use `newagt pairs --dataset-root /path/to/dataset` to list pairs locally without parsing ARF. Messy recursive scans (`newagt info` on a broad mount) and classic pairing scans answer different questions—use whichever matches your tree.
+
 Set a shell variable for the corpus root (example only; pick whatever path is stable on your machine):
 
 ```bash
