@@ -192,7 +192,7 @@
 
 ---
 
-## CLI mapping (target)
+## CLI mapping
 
 | Command | Milestone |
 |---------|-----------|
@@ -202,6 +202,7 @@
 | `dump` | M7 ✓ |
 | `validate` | M6 ✓ |
 | `to-json` | M7 ✓ |
+| `pairs` | Post-M10 ✓ |
 
 ---
 
@@ -214,17 +215,27 @@
 
 ---
 
-## Post-M10 (optional)
+## Post-M10 (shipped and documented)
+
+| Item | Status |
+|------|--------|
+| Authority frame count **N** | ✓ Global CLI `--frame-count`; Python `frame_count=`; Rust `FrameIndexOptions::expected_frame_count`. [arf-frame-authority.md](arf-frame-authority.md) |
+| Classic ARF/AGT pairing scan | ✓ `newagt pairs --dataset-root` + `--missing agt\|arf\|both`; layout in [arf-frame-authority.md](arf-frame-authority.md) |
+| Corpus directory `info` summary | ✓ Stderr batch line (`InfoBatchStats`); `--progress`, `--limit`; [corpus-testing.md](corpus-testing.md), [user-guide.md](user-guide.md) |
+| Lexer / literal tolerance | ✓ CRLF fixtures; underscores in unknown keywords; signed integer literals for corpus `PixLoc` |
+| User-facing docs | ✓ [user-guide.md](user-guide.md), [changelog.md](changelog.md), [README.md](README.md) index |
+
+## Post-M10 (optional / future)
 
 | Item | Notes |
 |------|--------|
-| Optional authority frame count **N** | User/CLI/Python `expected_frame_count`; pads or caps timeline to **N**; ARF reader future. See [arf-frame-authority.md](arf-frame-authority.md). ✓ |
-| Corpus benchmarking (private mount) | Documented in [corpus-testing.md](corpus-testing.md); use `newagt info` with `--limit` or local TSV redirects. |
-| Full-tree timing / failure histograms | Offline scripts over local `info`/`validate` output—not CI. |
-| Trainer integration | PyO3 module exists; deeper PyTorch dataset wiring as needed. |
+| ARF reader → frame count | Populate **N** from paired `.arf` when a reader exists; precedence TBD |
+| Corpus benchmarking (private mount) | Offline only; `newagt info` with `--limit` or local TSV redirects — not CI |
+| Full-tree timing / failure histograms | Scripts over local `info`/`validate` output |
+| Trainer integration | PyO3 + [user-guide.md](user-guide.md) PyTorch sketch; in-repo `Dataset` only if needed |
 
 ---
 
 ## Immediate next step after this doc
 
-M0–M10 milestones for the Rust CLI and core are complete; optional next work is corpus-scale profiling on private data (see [corpus-testing.md](corpus-testing.md)) and trainer integration.
+M0–M10 and the post-M10 items above are **done**. Optional follow-on: ARF metadata integration, corpus-scale profiling on private data ([corpus-testing.md](corpus-testing.md)), and trainer-specific PyTorch wiring.
