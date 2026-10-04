@@ -8,7 +8,7 @@ The on-disk format is documented starting from **`Agt-1992.pdf`** (legacy tree `
 
 ## Status
 
-Early development through **M7** (`newagt dump`, `newagt to-json`, and minimal `newagt info`).
+Early development through **M8** (`newagt dump`, `newagt to-json`, `newagt info`, `newagt frames`, and `Document::frames` in `newagt-core`).
 
 - Format summary (from `Agt-1992.pdf`): [docs/agt-format-spec-1992.md](docs/agt-format-spec-1992.md)
 - Implementation milestones: [docs/agt-implementation-plan.md](docs/agt-implementation-plan.md)
