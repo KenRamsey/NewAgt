@@ -21,7 +21,7 @@
 |------|------|
 | A | Real training AGT files |
 | B | `Agt-1992.pdf` / format summary |
-| C | AGTJ (`NewC_r529/AGTJ`) behavior hints |
+| C | AGTJ (`NewC_r529/AGTJ`) — evolving C parser; accommodations valuable, not authoritative |
 | D | COMMENT/KEYWORD pattern inventory |
 
 ---

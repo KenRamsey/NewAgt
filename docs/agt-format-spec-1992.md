@@ -228,7 +228,9 @@ Enumerated **example** target types (U.S. and C.I.S. vehicle/aircraft names) for
 
 ## Legacy hints (AGTJ — not spec)
 
-Skim of `/home/atlas/Repos/NewC_r529/AGTJ` for names that **extend** the PDF. **Hints only.**
+**AGTJ** is C code under `/home/atlas/Repos/NewC_r529/AGTJ`: a **sporadically maintained**, ongoing attempt to stay **somewhat in step with real AGT usage**. Its **additions and accommodations** (extra keywords, arrays, frame heuristics) carry **real-world value** but are **not absolute truth** — compare to corpus and trainer needs.
+
+Skim AGTJ for names that **extend** the PDF. **Hints only.**
 
 | PDF / grammar | AGTJ (`agtJ_types.h`, readers) |
 |---------------|--------------------------------|

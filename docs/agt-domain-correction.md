@@ -14,7 +14,7 @@ Initial agents interpreted **“AGT”** as the **Adventure Game Toolkit** (Malm
   **`/home/atlas/Repos/NewC_r529/AGTJ/Agt-1992.pdf`**  
   (Earlier notes used `/home/ken/Repos/...`; use whichever path exists on the active machine.)
 - The acronym **“AGT”** may **not be expanded** in the original spec — do not assume “Adventure Game Toolkit.”
-- **Obsolete implementation:** very loose reference code under **`/home/atlas/Repos/NewC_r529`** (includes **AGTJ**). Useful hints only; not authoritative.
+- **AGTJ (C):** under **`/home/atlas/Repos/NewC_r529`** — sporadically updated to track **actual usage**; accommodations add value but are **not absolute truth** (same tier as spec: triangulate with corpus).
 - **Real files:** many are **non-compliant** with the written spec; **`COMMENT`** and **`KEYWORD`** are often used as overflow data slots (see [AGT in the wild](agt-real-world-format.md)).
 
 ## What to stop using as spec

@@ -46,9 +46,9 @@ Users **jammed data** that “really belonged elsewhere” in the spec into COMM
 - Image-stream ground truth may live in **non-spec COMMENT/KEYWORD** slots — indexing must expose **raw + best-effort interpreted** views (e.g. frame list from heuristics, with provenance: “pattern v3 from corpus 2026-02”).
 - Training pipelines need **stable column names** in Python even when on-disk layout is messy — map messy → canonical in the **Python layer**, fed by rich native index.
 
-### 5. Reference hierarchy (revised)
+### 5. Reference hierarchy
 
-See [domain correction](agt-domain-correction.md). **`Agt-1992.pdf`** and **AGTJ** are a skeleton; **Ken’s training corpus** is what parsers must not break. COMMENT/KEYWORD innovation is **first-class data**, not errors.
+**Corpus** = highest. **`Agt-1992.pdf`** = skeleton. **AGTJ (C)** = sporadically updated to track real usage — accommodations **valuable, not absolute truth**. COMMENT/KEYWORD innovation = **first-class data**, not errors.
 
 ## Open work (later milestones)
 
