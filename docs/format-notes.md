@@ -10,7 +10,7 @@ See also:
 - [agt-implementation-plan.md](agt-implementation-plan.md) — NewAgt milestones  
 - [agt-real-world-format.md](agt-real-world-format.md) — COMMENT/KEYWORD expectations  
 
-## M4 — extension bucket (stub)
+## M4 — extension bucket
 
 | Item | NewAgt |
 |------|--------|
@@ -19,4 +19,17 @@ See also:
 | Misplaced PDF keywords | Preserved as `UnknownStatement` + `ParseWarningKind::OddPlacement` |
 | Typed corpus hooks | `ExtensionRecord::Uninterpreted` on `ParseResult.extensions` (empty until inventory) |
 
-Load API: `parse()` (warnings discarded) and `parse_with_warnings()` ([wild format](agt-real-world-format.md)).
+Load API: `parse()` (warnings discarded), `parse_with_warnings()`, and `parse_with_options()` ([wild format](agt-real-world-format.md)).
+
+## M5 — parse profiles
+
+| Profile | CLI `--profile` | Behavior |
+|---------|-----------------|----------|
+| **`agtj`** (default) | `agtj` | AGTJ-aligned placements: `Fov` in `SenUpd`, `PixBox` on `Tgt`, 5-field `Utm` (grid + datum strings after elevation). |
+| **`pdf1999`** | `pdf1999` | PDF yacc §6.2 placements only: AGTJ-only constructs become `UnknownStatement` with `ProfileExtension` warnings; `Utm` accepts exactly 3 numeric fields. |
+
+| Item | 1992 PDF yacc | AGTJ / corpus | NewAgt default (`agtj`) |
+|------|---------------|---------------|-------------------------|
+| `Fov` in `SenUpd` | Not in `sen_upd_item` | `Prototype_SenSect.agt` | Typed `Field` |
+| `PixBox` on `Tgt` | §2.1.2 but not in `tgt_item` | `Prototype_TgtSect.agt` | Typed `Field` |
+| `Utm` | 3 numbers | Optional grid/datum strings (5 tokens) | 3 or 5 tokens |

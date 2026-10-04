@@ -18,6 +18,8 @@ pub enum ExtensionRecord {
 pub enum ParseWarningKind {
     UnknownKeyword,
     OddPlacement,
+    /// Field or composite shape allowed under another [`crate::profile::ParseProfile`].
+    ProfileExtension,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

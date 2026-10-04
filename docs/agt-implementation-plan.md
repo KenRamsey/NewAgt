@@ -97,7 +97,7 @@
 
 ---
 
-## M5 — AGTJ-aligned extensions (optional profile)
+## M5 — AGTJ-aligned extensions (optional profile) (done)
 
 **Deliverables**
 
@@ -107,6 +107,8 @@
 - Document as **`profile: agtj`** in `format-notes.md`; strict PDF-only mode flag `--profile pdf1999`.
 
 **Tests:** Diff `Prototype_SenSect.agt` / `Prototype_TgtSect.agt` against AGTJ list output where available.
+
+**Exit:** `ParseProfile` + `parse_with_options`; CLI global `--profile`; fixtures `prototype_*_snippet.agt`. **Met.**
 
 ---
 

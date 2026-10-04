@@ -1,6 +1,7 @@
 //! Typed composite field values (PDF §2.1.2) and scalar coercions.
 
 use crate::keyword::Keyword;
+use crate::profile::ParseProfile;
 use crate::span::Span;
 use crate::token::{Token, TokenKind};
 
@@ -99,13 +100,17 @@ impl std::fmt::Display for ValueParseError {
 impl std::error::Error for ValueParseError {}
 
 /// Attach typed `FieldValue` to a known keyword's value tokens.
-pub fn parse_field_value(keyword: Keyword, tokens: Vec<Token>) -> Result<FieldValue, ValueParseError> {
+pub fn parse_field_value(
+    profile: ParseProfile,
+    keyword: Keyword,
+    tokens: Vec<Token>,
+) -> Result<FieldValue, ValueParseError> {
     let span = value_span(&tokens).unwrap_or(Span::new(1, 1, 0));
     match keyword {
         Keyword::Time => parse_time(tokens, keyword, span),
         Keyword::PixLoc => parse_pix_loc(tokens, keyword, span),
         Keyword::LatLong => parse_lat_long(tokens, keyword, span),
-        Keyword::Utm => parse_utm(tokens, keyword, span),
+        Keyword::Utm => parse_utm(profile, tokens, keyword, span),
         Keyword::Fov => parse_fov(tokens, keyword, span),
         Keyword::PixRange => parse_pix_range(tokens, keyword, span),
         Keyword::PixBox => parse_pix_box(tokens, keyword, span),
@@ -230,7 +235,12 @@ fn parse_lat_long(tokens: Vec<Token>, keyword: Keyword, span: Span) -> Result<Fi
     Ok(FieldValue::Raw(tokens))
 }
 
-fn parse_utm(tokens: Vec<Token>, keyword: Keyword, span: Span) -> Result<FieldValue, ValueParseError> {
+fn parse_utm(
+    profile: ParseProfile,
+    tokens: Vec<Token>,
+    keyword: Keyword,
+    span: Span,
+) -> Result<FieldValue, ValueParseError> {
     // PDF: easting, northing, elevation. AGTJ may append grid + datum strings (5 fields total).
     match tokens.len() {
         3 => {
@@ -245,7 +255,7 @@ fn parse_utm(tokens: Vec<Token>, keyword: Keyword, span: Span) -> Result<FieldVa
                 datum: None,
             }))
         }
-        5 => {
+        5 if profile == ParseProfile::Agtj => {
             let easting = as_long(&tokens[0]).ok_or_else(|| type_mismatch(keyword, span, "long"))?;
             let northing = as_long(&tokens[1]).ok_or_else(|| type_mismatch(keyword, span, "long"))?;
             let elevation = as_float(&tokens[2]).ok_or_else(|| type_mismatch(keyword, span, "float"))?;
@@ -262,10 +272,20 @@ fn parse_utm(tokens: Vec<Token>, keyword: Keyword, span: Span) -> Result<FieldVa
             }
             Ok(FieldValue::Raw(tokens))
         }
+        5 => Err(incomplete(
+            keyword,
+            span,
+            "3 numbers (Utm) under profile pdf1999; use profile agtj for grid/datum strings",
+            5,
+        )),
         n => Err(incomplete(
             keyword,
             span,
-            "3 numbers (Utm) or 5 with grid/datum strings (AGTJ)",
+            if profile == ParseProfile::Agtj {
+                "3 numbers (Utm) or 5 with grid/datum strings (AGTJ)"
+            } else {
+                "3 numbers (Utm)"
+            },
             n,
         )),
     }
@@ -369,6 +389,7 @@ mod tests {
     #[test]
     fn time_valid() {
         let v = parse_field_value(
+            ParseProfile::Agtj,
             Keyword::Time,
             vec![int(1992), int(140), int(16), int(34), int(15), int(341)],
         )
@@ -388,13 +409,14 @@ mod tests {
 
     #[test]
     fn time_incomplete() {
-        let err = parse_field_value(Keyword::Time, vec![int(1992), int(140)]).unwrap_err();
+        let err = parse_field_value(ParseProfile::Agtj, Keyword::Time, vec![int(1992), int(140)]).unwrap_err();
         assert!(err.message.contains("6 integers"));
     }
 
     #[test]
     fn lat_long_valid() {
         let v = parse_field_value(
+            ParseProfile::Agtj,
             Keyword::LatLong,
             vec![
                 int(11),
@@ -414,6 +436,7 @@ mod tests {
     #[test]
     fn lat_long_incomplete_seven_tokens() {
         let err = parse_field_value(
+            ParseProfile::Agtj,
             Keyword::LatLong,
             vec![int(1), int(2), real(3.0), str("N"), int(4), int(5), real(6.0)],
         )
@@ -423,7 +446,12 @@ mod tests {
 
     #[test]
     fn utm_pdf_three_fields() {
-        let v = parse_field_value(Keyword::Utm, vec![int(500_000), int(4_000_000), real(100.5)]).unwrap();
+        let v = parse_field_value(
+            ParseProfile::Agtj,
+            Keyword::Utm,
+            vec![int(500_000), int(4_000_000), real(100.5)],
+        )
+        .unwrap();
         let FieldValue::Utm(u) = v else {
             panic!("expected Utm");
         };
@@ -434,6 +462,7 @@ mod tests {
     #[test]
     fn utm_agtj_five_fields() {
         let v = parse_field_value(
+            ParseProfile::Agtj,
             Keyword::Utm,
             vec![int(1), int(2), real(3.0), str("18N"), str("WGS84")],
         )
@@ -447,32 +476,38 @@ mod tests {
 
     #[test]
     fn utm_incomplete_two_fields() {
-        let err = parse_field_value(Keyword::Utm, vec![int(1), int(2)]).unwrap_err();
+        let err = parse_field_value(ParseProfile::Agtj, Keyword::Utm, vec![int(1), int(2)]).unwrap_err();
         assert!(err.message.contains("3 numbers"));
     }
 
     #[test]
     fn pix_loc_and_range_and_fov() {
-        let pl = parse_field_value(Keyword::PixLoc, vec![int(200), int(230)]).unwrap();
+        let pl = parse_field_value(ParseProfile::Agtj, Keyword::PixLoc, vec![int(200), int(230)]).unwrap();
         assert_eq!(
             pl,
             FieldValue::PixLoc(PixLoc { x: 200, y: 230 })
         );
-        let pr = parse_field_value(Keyword::PixRange, vec![int(10), int(20), real(1500.0)]).unwrap();
+        let pr =
+            parse_field_value(ParseProfile::Agtj, Keyword::PixRange, vec![int(10), int(20), real(1500.0)]).unwrap();
         assert!(matches!(pr, FieldValue::PixRange(_)));
-        let fov = parse_field_value(Keyword::Fov, vec![real(30.0), real(20.0)]).unwrap();
+        let fov = parse_field_value(ParseProfile::Agtj, Keyword::Fov, vec![real(30.0), real(20.0)]).unwrap();
         assert!(matches!(fov, FieldValue::Fov(_)));
     }
 
     #[test]
     fn pix_range_incomplete() {
-        let err = parse_field_value(Keyword::PixRange, vec![int(1), int(2)]).unwrap_err();
+        let err = parse_field_value(ParseProfile::Agtj, Keyword::PixRange, vec![int(1), int(2)]).unwrap_err();
         assert!(err.message.contains("2 integers + float"));
     }
 
     #[test]
     fn pix_box_four_integers() {
-        let v = parse_field_value(Keyword::PixBox, vec![int(0), int(0), int(100), int(100)]).unwrap();
+        let v = parse_field_value(
+            ParseProfile::Agtj,
+            Keyword::PixBox,
+            vec![int(0), int(0), int(100), int(100)],
+        )
+        .unwrap();
         assert!(matches!(v, FieldValue::PixBox(_)));
     }
 }

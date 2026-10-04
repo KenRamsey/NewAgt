@@ -1,0 +1,21 @@
+Agt
+ {
+  SenSect
+   {
+    Name     "vis1"
+    Fov      40.00 30.00
+    SenUpd
+     {
+      Time      2005 256  9  9 56 637
+      Fov       40.0 30.0
+      Azimuth   10.23
+      Elevation 1.2
+      Roll      -1.2
+      LatLong   38 52 53 "N" 77 02 12 "W"
+      Utm       323339 4305586 26
+      Range     520.34
+      PixRange   10  10  43.4
+      Keyword  "Frame# 1"
+     }
+   }
+ }

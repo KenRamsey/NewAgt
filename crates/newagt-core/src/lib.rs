@@ -5,6 +5,7 @@ pub mod extension;
 pub mod keyword;
 pub mod lex;
 pub mod parse;
+pub mod profile;
 pub mod span;
 pub mod token;
 pub mod value;
@@ -15,7 +16,8 @@ pub use extension::{
 };
 pub use keyword::Keyword;
 pub use lex::{lex, lex_tokens, LexError, LexTokenIter};
-pub use parse::{parse, parse_with_warnings, Found, ParseError};
+pub use parse::{parse, parse_with_options, parse_with_warnings, Found, ParseError, ParseOptions};
+pub use profile::ParseProfile;
 pub use span::Span;
 pub use token::{Token, TokenKind};
 pub use value::{

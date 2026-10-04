@@ -7,6 +7,7 @@ use crate::ast::{
 };
 use crate::extension::{ParseResult, ParseWarning, ParseWarningKind};
 use crate::keyword::Keyword;
+use crate::profile::ParseProfile;
 use crate::lex::lex;
 use crate::span::Span;
 use crate::token::{Token, TokenKind};
@@ -65,15 +66,26 @@ impl std::fmt::Display for Found {
     }
 }
 
+/// Options for [`parse_with_options`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ParseOptions {
+    pub profile: ParseProfile,
+}
+
 /// Parse a complete AGT document (`Agt { … }` root), discarding non-fatal warnings.
 pub fn parse(source: &str) -> Result<Document, ParseError> {
-    parse_with_warnings(source).map(|result| result.document)
+    parse_with_options(source, ParseOptions::default()).map(|result| result.document)
 }
 
 /// Parse and collect [`ParseWarning`] for unknown keywords and odd placements.
 pub fn parse_with_warnings(source: &str) -> Result<ParseResult, ParseError> {
+    parse_with_options(source, ParseOptions::default())
+}
+
+/// Parse with an explicit [`ParseProfile`] (AGTJ vs PDF-strict).
+pub fn parse_with_options(source: &str, options: ParseOptions) -> Result<ParseResult, ParseError> {
     let tokens = lex(source).map_err(ParseError::Lex)?;
-    let mut parser = Parser::new(tokens);
+    let mut parser = Parser::new(tokens, options.profile);
     let root = parser.parse_agt()?;
     if parser.peek().is_some() {
         let span = parser.peek().unwrap().span;
@@ -90,14 +102,16 @@ struct Parser {
     tokens: Vec<Token>,
     pos: usize,
     warnings: Vec<ParseWarning>,
+    profile: ParseProfile,
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Self {
+    fn new(tokens: Vec<Token>, profile: ParseProfile) -> Self {
         Self {
             tokens,
             pos: 0,
             warnings: Vec::new(),
+            profile,
         }
     }
 
@@ -106,6 +120,10 @@ impl Parser {
             ParseWarningKind::UnknownKeyword => format!("unrecognized keyword `{name}`"),
             ParseWarningKind::OddPlacement => format!(
                 "keyword `{name}` not expected here; preserved as UnknownStatement"
+            ),
+            ParseWarningKind::ProfileExtension => format!(
+                "keyword `{name}` is not allowed under profile `{}`; preserved as UnknownStatement",
+                self.profile
             ),
         };
         self.warnings.push(ParseWarning {
@@ -178,7 +196,8 @@ impl Parser {
 
     fn parse_field(&mut self, keyword: Keyword, keyword_span: Span) -> Result<Field, ParseError> {
         let tokens = self.consume_value_tokens();
-        let value = crate::value::parse_field_value(keyword, tokens.clone()).map_err(ParseError::Value)?;
+        let value =
+            crate::value::parse_field_value(self.profile, keyword, tokens.clone()).map_err(ParseError::Value)?;
         Ok(Field {
             keyword,
             keyword_span,
@@ -378,6 +397,15 @@ impl Parser {
 
     fn parse_sen_upd_item(&mut self) -> Result<SenUpdItem, ParseError> {
         let tok = self.bump();
+        if matches!(tok.kind, TokenKind::Keyword(Keyword::Fov))
+            && self.profile == ParseProfile::Pdf1999
+        {
+            return Ok(SenUpdItem::Unknown(self.parse_unknown_statement(
+                Keyword::Fov.to_string(),
+                tok.span,
+                Some(ParseWarningKind::ProfileExtension),
+            )));
+        }
         match tok.kind {
             TokenKind::Keyword(
                 kw @ (Keyword::Comment
@@ -523,6 +551,15 @@ impl Parser {
             return Ok(TgtItem::TgtAbs(self.parse_tgt_abs_body(span)?));
         }
         let tok = self.bump();
+        if matches!(tok.kind, TokenKind::Keyword(Keyword::PixBox))
+            && self.profile == ParseProfile::Pdf1999
+        {
+            return Ok(TgtItem::Unknown(self.parse_unknown_statement(
+                Keyword::PixBox.to_string(),
+                tok.span,
+                Some(ParseWarningKind::ProfileExtension),
+            )));
+        }
         match tok.kind {
             TokenKind::Keyword(
                 kw @ (Keyword::Comment

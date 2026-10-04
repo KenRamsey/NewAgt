@@ -1,0 +1,34 @@
+Agt
+ {
+  TgtSect
+   {
+    TgtUpd
+     {
+      Time     2005 256  9  9 56 637
+      Keyword  "Frame# 1"
+      Tgt
+       {
+        TgtType     "TOY_PICKUP"
+        PlyId       "VA-ZYE-7636"
+        Aspect      123.45
+        Range       384
+        PixLoc      72 322
+        PixBox      62 317 82 327
+        TgtSenRel
+         {
+          Azimuth      354
+          Elevation    -3.925
+          Obscuration  10
+          Pitch        -5.0
+          Roll         6.0
+         }
+        TgtAbs
+         {
+          Utm          323252 4305776 33
+          LatLong      38 52 59 "N" 77 02 16 "W"
+          Stake        "A203"
+         }
+       }
+     }
+   }
+ }
