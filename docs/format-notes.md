@@ -1,12 +1,13 @@
 # AGT format notes
 
-Purpose: **spec vs corpus notes** — triangulated deltas between written specs (including legacy AGTJ / ~1992 doc), AGiliTy behavior, and bytes observed in real game files.
+Purpose: **spec vs corpus notes** — deltas between `Agt-1992.pdf`, AGTJ, and Ken’s imagery AGT training files.
 
-As milestones land, record per-file-type tables here: *1992 spec says* / *AGTJ code does* / *AGiliTy does* / *verified game(s)*.
+As milestones land, record tables here: *1992 spec says* / *AGTJ code does* / *corpus sample*.
 
 See also:
 
-- [agt-parser-plan.md](agt-parser-plan.md) — implementation plan and reference hierarchy  
-- [agt-real-world-format.md](agt-real-world-format.md) — COMMENT/KEYWORD and tolerant parsing expectations
+- [agt-format-spec-1992.md](agt-format-spec-1992.md) — PDF summary  
+- [agt-implementation-plan.md](agt-implementation-plan.md) — NewAgt milestones  
+- [agt-real-world-format.md](agt-real-world-format.md) — COMMENT/KEYWORD expectations  
 
 _No layout deltas recorded yet (M0 scaffold)._
