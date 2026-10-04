@@ -9,7 +9,7 @@ use crate::ast::{
 use crate::token::TokenKind;
 use crate::keyword::Keyword;
 use crate::span::Span;
-use crate::value::{FieldValue, Fov, PixLoc, PixRange, Time};
+use crate::value::{FieldValue, Fov, PixBox, PixLoc, PixRange, Time};
 
 /// How sensor/target updates were aligned into frames.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
@@ -72,6 +72,9 @@ pub struct TargetEntry {
     pub name: Option<String>,
     pub tgt_type: Option<String>,
     pub pix_loc: Option<PixLoc>,
+    pub pix_box: Option<PixBox>,
+    pub aspect_deg: Option<f64>,
+    pub range_m: Option<f64>,
     pub pix_ranges: Vec<PixRange>,
     pub fov: Option<Fov>,
 }
@@ -477,6 +480,9 @@ fn extract_tgt_entry(tgt: &Tgt, tgt_index: u32) -> TargetEntry {
     let mut name = None;
     let mut tgt_type = None;
     let mut pix_loc = None;
+    let mut pix_box = None;
+    let mut aspect_deg = None;
+    let mut range_m = None;
     let mut pix_ranges = Vec::new();
     let mut fov = None;
 
@@ -497,6 +503,17 @@ fn extract_tgt_entry(tgt: &Tgt, tgt_index: u32) -> TargetEntry {
                     if let FieldValue::PixLoc(p) = &f.value {
                         pix_loc = Some(p.clone());
                     }
+                }
+                Keyword::PixBox => {
+                    if let FieldValue::PixBox(b) = &f.value {
+                        pix_box = Some(b.clone());
+                    }
+                }
+                Keyword::Aspect => {
+                    aspect_deg = float_field(f);
+                }
+                Keyword::Range => {
+                    range_m = float_field(f);
                 }
                 Keyword::PixRange => {
                     if let FieldValue::PixRange(r) = &f.value {
@@ -522,6 +539,9 @@ fn extract_tgt_entry(tgt: &Tgt, tgt_index: u32) -> TargetEntry {
         name,
         tgt_type,
         pix_loc,
+        pix_box,
+        aspect_deg,
+        range_m,
         pix_ranges,
         fov,
     }
@@ -612,6 +632,16 @@ impl Serialize for PixLoc {
         let mut s = serializer.serialize_struct("PixLoc", 2)?;
         s.serialize_field("x", &self.x)?;
         s.serialize_field("y", &self.y)?;
+        s.end()
+    }
+}
+
+impl Serialize for PixBox {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = serializer.serialize_struct("PixBox", 2)?;
+        s.serialize_field("upper_left", &self.upper_left)?;
+        s.serialize_field("lower_right", &self.lower_right)?;
         s.end()
     }
 }

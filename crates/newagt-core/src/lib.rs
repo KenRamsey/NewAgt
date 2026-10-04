@@ -1,6 +1,7 @@
 //! Core library for parsing imagery ground truth AGT containers.
 
 pub mod ast;
+pub mod bbox;
 pub mod dump;
 pub mod extension;
 pub mod frames;
@@ -16,6 +17,10 @@ pub mod validate;
 pub mod value;
 
 pub use ast::{Document, UnknownStatement};
+pub use bbox::{
+    resolve_bboxes, tgtdb_get_rect, BboxError, BboxMethod, BboxProvenance, BBoxIndex, BBoxOptions,
+    TargetBBox, TargetBBoxRecord, TgtDatDb, TgtDatEntry, TgtDatError,
+};
 pub use dump::dump_document;
 pub use extension::{
     ExtensionRecord, ParseResult, ParseWarning, ParseWarningKind,

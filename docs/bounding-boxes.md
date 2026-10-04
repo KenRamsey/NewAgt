@@ -1,7 +1,7 @@
 # Bounding box output — NewAgt design
 
 **Audience:** Ken (imagery ground-truth AGT → trainer bboxes)  
-**Status:** Design (M8b); parser M3/M5/M8 already load fields; resolution math not implemented in Rust yet.
+**Status:** Implemented (M8b) in `newagt-core::bbox` and `newagt bboxes`.
 
 ---
 
@@ -38,7 +38,7 @@ Interpret as inclusive pixel indices (AGTJ / eval convention):
 
 **Policy (Ken):** If `PixBox` is present, it **wins** over computed geometry. Do not re-derive unless an explicit override flag is set (eval `Abuse_Tgt` used `-usepixbox`-style behavior; default for trainers should match Score: PixBox when present).
 
-**NewAgt today:** `FieldValue::PixBox` is parsed under **`profile: agtj`** (M5). It is **not** copied into `TargetEntry` in the M8 frame index (see gaps below).
+**NewAgt:** `PixBox`, `Aspect`, and `Range` are copied onto `TargetEntry` in the M8 frame index and used by `resolve_bboxes`.
 
 ---
 
@@ -87,7 +87,7 @@ Whitespace-delimited **text** (352 lines in legacy tree; ~tens of KB — do not 
 - Lines with non-numeric L/W/H (e.g. `???`) are **skipped** in Python (`tgtdb.py` try/except).
 - `RcgValDB` alternate index by column 10 — only needed for legacy recog-value pipelines.
 
-**Fixture:** minimal snippet in repo `crates/newagt-core/tests/fixtures/tgt.dat.snippet` (not wired to tests until M8b).
+**Fixture:** `crates/newagt-core/tests/fixtures/tgt.dat.snippet` (used in `m8_bboxes` tests).
 
 ### Normative algorithm (eval / Score)
 
@@ -146,12 +146,12 @@ Does **not** define centering; callers must align with `PixLoc`. M8b should impl
 
 | Feature | Spec | Parsed | Frame index M8 |
 |---------|------|--------|----------------|
-| `PixBox` | §2.1.2.6 | ✓ `PixBox { upper_left, lower_right }` (agtj) | ✗ not on `TargetEntry` |
+| `PixBox` | §2.1.2.6 | ✓ `PixBox { upper_left, lower_right }` (agtj) | ✓ on `TargetEntry` |
 | `PixLoc` | §2.1.2 | ✓ | ✓ |
 | `Fov` | composite | ✓ | ✓ sensor `SenUpd` only |
-| `Aspect`, `Range` | scalars | ✓ on `Tgt` | ✗ |
-| `SenSect.Fov` | PDF | ✓ parse | ✗ not merged into frames |
-| `tgt.dat` | external | — | — |
+| `Aspect`, `Range` | scalars | ✓ on `Tgt` | ✓ on `TargetEntry` |
+| `SenSect.Fov` | PDF | ✓ parse | ✓ bbox FOV cascade (not frame index) |
+| `tgt.dat` | external | — | ✓ `TgtDatDb::load` |
 
 ---
 
@@ -258,10 +258,11 @@ Keep **`tgt.dat` path and image size in Python config** for trainer repos; Rust 
 
 ## Verification strategy
 
-1. **PixBox fixture:** `prototype_tgt_sect_snippet.agt` — resolver returns `(62,317)–(82,327)`, source `PixBox`.
-2. **Golden numeric:** one target with known `M1`, `Aspect`, `Range`, FOV, 640×480 — compare `boxw`/`boxh`/`x1`/`y1` to `Abuse_Tgt.c` or a locked Python reference.
-3. **Missing inputs:** assert warnings, no panic.
-4. **tgt.dat snippet:** load fixture; lookup `M1` dimensions.
+1. **PixBox fixture:** `prototype_tgt_sect_snippet.agt` — `m8_bboxes::pixbox_fixture_prototype_tgt_sect`.
+2. **Score golden:** synthetic `M1`, `Aspect 0`, `Range 500`, `Fov 30×20`, `640×480`, `PixLoc 320,240` — inclusive box `(317,238)–(324,243)`. Integer `boxw`/`boxh` match C `IS32` truncation of the double expression in `Score.c` (not banker's rounding).
+3. **tgtdb linear:** Rust `tgtdb_get_rect` vs `tests/scripts/tgtdb_get_rect.py` (same formula as `tgtdb.py` `getRect`); full boxes use provenance `TgtdbLinear`, never mixed silently with Score.
+4. **Missing inputs:** `missing_range_*` / `missing_tgt_dat_row_*` integration tests — warnings, no panic.
+5. **tgt.dat snippet:** `TgtDatDb` unit test loads `M1` L/W/H.
 
 ---
 
