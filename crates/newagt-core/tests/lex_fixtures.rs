@@ -83,3 +83,23 @@ fn spans_are_one_based() {
     assert_eq!(tokens[1].span.line, 2);
     assert_eq!(tokens[1].span.column, 1);
 }
+
+#[test]
+fn crlf_fixture_lexes() {
+    let tokens = lex(&fixture("crlf_header.agt")).unwrap();
+    assert_eq!(kw(&tokens, 0), Keyword::Agt);
+    assert!(matches!(tokens[1].kind, TokenKind::LBrace));
+    assert!(matches!(tokens[2].kind, TokenKind::RBrace));
+}
+
+#[test]
+fn underscore_unknown_keyword_fixture() {
+    let tokens = lex(&fixture("underscore_field.agt")).unwrap();
+    assert!(
+        tokens.iter().any(|t| matches!(
+            &t.kind,
+            TokenKind::UnknownKeyword(s) if s == "PLATFORM_LATITUDE"
+        )),
+        "expected PLATFORM_LATITUDE token"
+    );
+}
