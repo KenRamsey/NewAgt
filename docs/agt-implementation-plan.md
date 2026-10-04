@@ -218,6 +218,7 @@
 
 | Item | Notes |
 |------|--------|
+| Optional authority frame count **N** | User/CLI/Python `expected_frame_count`; pads or caps timeline to **N**; ARF reader future. See [arf-frame-authority.md](arf-frame-authority.md). ✓ |
 | Corpus benchmarking (private mount) | Documented in [corpus-testing.md](corpus-testing.md); use `newagt info` with `--limit` or local TSV redirects. |
 | Full-tree timing / failure histograms | Offline scripts over local `info`/`validate` output—not CI. |
 | Trainer integration | PyO3 module exists; deeper PyTorch dataset wiring as needed. |

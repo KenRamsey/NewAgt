@@ -1,6 +1,8 @@
 //! Structured validation report (M6): parse warnings + post-parse AST checks.
 
 use crate::ast::{Agt, AgtItem, Document, PrjItem, PrjSect};
+use crate::frames::authority_frame_count_messages;
+use crate::info::summarize_document;
 use crate::extension::{ParseWarning, ParseWarningKind};
 use crate::keyword::Keyword;
 use crate::parse::{parse_with_options, Found, ParseError, ParseOptions};
@@ -38,6 +40,7 @@ pub enum ValidationCode {
     ProfileExtension,
     DuplicateSingleton,
     MissingOptionalSection,
+    AuthorityFrameCount,
 }
 
 impl ValidationCode {
@@ -54,6 +57,7 @@ impl ValidationCode {
             Self::ProfileExtension => "profile_extension",
             Self::DuplicateSingleton => "duplicate_singleton",
             Self::MissingOptionalSection => "missing_optional_section",
+            Self::AuthorityFrameCount => "authority_frame_count",
         }
     }
 }
@@ -82,7 +86,14 @@ impl ValidationReport {
 }
 
 /// Validate `source` under `options`: aggregate parse warnings and AST checks.
-pub fn validate(source: &str, options: ParseOptions) -> ValidationReport {
+///
+/// When `authority_frame_count` is `Some(n)`, append warnings if collected `SenUpd` / `TgtUpd`
+/// counts disagree with `n` (same rules as [`crate::frames::build_frame_index`] authority mode).
+pub fn validate(
+    source: &str,
+    options: ParseOptions,
+    authority_frame_count: Option<u32>,
+) -> ValidationReport {
     let mut entries = Vec::new();
     if let Some(span) = find_unterminated_string_at_eof(source) {
         entries.push(ValidationEntry {
@@ -107,6 +118,10 @@ pub fn validate(source: &str, options: ParseOptions) -> ValidationReport {
                 entries.push(warning_to_entry(warning));
             }
             check_document(&result.document, &mut entries);
+            if let Some(n) = authority_frame_count {
+                let summary = summarize_document(&result.document);
+                append_authority_frame_count(&summary, n, &mut entries);
+            }
             ValidationReport {
                 loadable: true,
                 entries,
@@ -295,6 +310,27 @@ fn find_unbalanced_braces(source: &str) -> Option<Span> {
     }
 }
 
+fn append_authority_frame_count(
+    summary: &crate::info::DocumentSummary,
+    n: u32,
+    entries: &mut Vec<ValidationEntry>,
+) {
+    let sen = summary.sen_upd as usize;
+    let tgt = summary.tgt_upd as usize;
+    for message in authority_frame_count_messages(sen, tgt, n) {
+        entries.push(ValidationEntry {
+            severity: ValidationSeverity::Warning,
+            message,
+            span: Span {
+                line: 1,
+                column: 1,
+                offset: 0,
+            },
+            code: ValidationCode::AuthorityFrameCount,
+        });
+    }
+}
+
 fn check_document(doc: &Document, entries: &mut Vec<ValidationEntry>) {
     check_agt(&doc.root, entries);
 }
@@ -471,7 +507,7 @@ mod tests {
     #[test]
     fn valid_minimal_loadable_with_missing_section_info() {
         let src = r#"Agt { TgtSect { TgtUpd { Tgt { Name "t1" } } } }"#;
-        let report = validate(src, ParseOptions::default());
+        let report = validate(src, ParseOptions::default(), None);
         assert!(report.loadable);
         assert!(report
             .entries
@@ -483,7 +519,7 @@ mod tests {
     #[test]
     fn broken_brace_not_loadable() {
         let src = r#"Agt { PrjSect { Name "x""#;
-        let report = validate(src, ParseOptions::default());
+        let report = validate(src, ParseOptions::default(), None);
         assert!(!report.loadable);
         assert!(report.entries.iter().any(|e| {
             e.severity == ValidationSeverity::Error
@@ -495,7 +531,7 @@ mod tests {
     #[test]
     fn parse_warnings_surface_as_validation_warnings() {
         let src = r#"Agt { PrjSect { CustomTag "x" } }"#;
-        let report = validate(src, ParseOptions::default());
+        let report = validate(src, ParseOptions::default(), None);
         assert!(report.loadable);
         assert!(report.entries.iter().any(|e| {
             e.code == ValidationCode::UnknownKeyword && e.severity == ValidationSeverity::Warning
@@ -519,9 +555,23 @@ mod tests {
     }
 
     #[test]
+    fn authority_frame_count_surfaces_as_warnings() {
+        let src = r#"Agt {
+  SenSect { SenUpd { Time 2000 1 0 0 0 0 } SenUpd { Time 2000 1 0 0 0 1 } }
+  TgtSect { TgtUpd { Tgt { Name "only" } } }
+}"#;
+        let report = validate(src, ParseOptions::default(), Some(5));
+        assert!(report.loadable);
+        assert!(report.entries.iter().any(|e| {
+            e.code == ValidationCode::AuthorityFrameCount
+                && e.message.contains("SenUpd count (2)")
+        }));
+    }
+
+    #[test]
     fn unterminated_string_at_eof_is_error_entry() {
         let src = r#"Agt { PrjSect { Name "no closing quote } }"#;
-        let report = validate(src, ParseOptions::default());
+        let report = validate(src, ParseOptions::default(), None);
         assert!(report.entries.iter().any(|e| {
             e.code == ValidationCode::UnterminatedString
                 && e.severity == ValidationSeverity::Error

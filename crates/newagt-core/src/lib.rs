@@ -26,8 +26,9 @@ pub use extension::{
     ExtensionRecord, ParseResult, ParseWarning, ParseWarningKind,
 };
 pub use frames::{
-    build_frame_index, format_frame_line, parse_frame_number, Frame, FrameIndex,
-    FrameIndexOptions, PairingProvenance, SensorFrameSide, TargetEntry, TargetFrameSide,
+    authority_frame_count_messages, build_frame_index, format_frame_line, parse_frame_number,
+    Frame, FrameIndex, FrameIndexOptions, PairingProvenance, SensorFrameSide, TargetEntry,
+    TargetFrameSide,
 };
 pub use info::{
     format_info, format_info_batch_line, sections_present, summarize_document, DocumentSummary,

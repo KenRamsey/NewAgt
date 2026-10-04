@@ -184,7 +184,7 @@ pub struct BBoxOptions {
     pub default_fov: Option<Fov>,
     /// If true, recompute even when PixBox exists (default: false).
     pub ignore_pix_box: bool,
-    pub frame_index: FrameIndexOptions,
+    pub frame_index: FrameIndexOptions, // optional `expected_frame_count` (see arf-frame-authority.md)
 }
 
 pub struct TargetBBoxRecord {

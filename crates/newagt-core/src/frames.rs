@@ -26,11 +26,22 @@ pub enum PairingProvenance {
 pub struct FrameIndexOptions {
     /// When true, attempt frame-hint pairing before falling back to list order.
     pub use_agtj_heuristics: bool,
+    /// User-supplied timeline length when set (e.g. from ARF metadata in a future reader).
+    ///
+    /// When `Some(n)`, the frame index has exactly **n** slots (indices `0..n-1`). Each slot
+    /// uses the *i*-th collected `SenUpd` / `TgtUpd` when present; missing sides are `None`
+    /// with per-frame warnings. Updates beyond index `n-1` are ignored (with a warning). Index-level
+    /// warnings are emitted when the collected `SenUpd` or `TgtUpd` count differs from `n`.
+    ///
+    /// When `None`, pairing uses `max(sen_upd, tgt_upd)` list-order alignment (current default).
+    /// ARF files are not read yet; this value is optional external authority for indexing only.
+    pub expected_frame_count: Option<u32>,
 }
 
 impl FrameIndexOptions {
     pub const DEFAULT: Self = Self {
         use_agtj_heuristics: false,
+        expected_frame_count: None,
     };
 }
 
@@ -98,6 +109,9 @@ pub struct Frame {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct FrameIndex {
     pub pairing_mode: PairingProvenance,
+    /// Echo of [`FrameIndexOptions::expected_frame_count`] when the index was built.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_frame_count: Option<u32>,
     pub warnings: Vec<String>,
     pub frames: Vec<Frame>,
 }
@@ -141,10 +155,26 @@ struct LocatedTgtUpd {
 
 /// Build a frame timeline from a parsed document.
 pub fn build_frame_index(doc: &Document, options: FrameIndexOptions) -> FrameIndex {
-    let sen_upds = collect_sen_upds(doc);
-    let tgt_upds = collect_tgt_upds(doc);
+    let sen_upds_full = collect_sen_upds(doc);
+    let tgt_upds_full = collect_tgt_upds(doc);
+    let sen_count = sen_upds_full.len();
+    let tgt_count = tgt_upds_full.len();
 
-    let (pairs, pairing_mode, index_warnings) = if options.use_agtj_heuristics {
+    let mut index_warnings = Vec::new();
+    if let Some(n) = options.expected_frame_count {
+        warn_authority_counts(sen_count, tgt_count, n, &mut index_warnings);
+    }
+
+    let (sen_upds, tgt_upds) = if let Some(n) = options.expected_frame_count {
+        (
+            cap_located_updates(&sen_upds_full, n),
+            cap_located_updates(&tgt_upds_full, n),
+        )
+    } else {
+        (sen_upds_full, tgt_upds_full)
+    };
+
+    let (mut pairs, pairing_mode, mut pair_warnings) = if options.use_agtj_heuristics {
         match try_heuristic_pairs(&sen_upds, &tgt_upds) {
             Some(p) => (p, PairingProvenance::HeuristicAgTJ, Vec::new()),
             None => {
@@ -152,15 +182,20 @@ pub fn build_frame_index(doc: &Document, options: FrameIndexOptions) -> FrameInd
                     "AGTJ frame hints incomplete or ambiguous; paired SenUpd/TgtUpd by list order"
                         .to_string(),
                 ];
-                let p = order_pairs(&sen_upds, &tgt_upds, &mut w);
+                let p = order_pairs(&sen_upds, &tgt_upds, options.expected_frame_count, &mut w);
                 (p, PairingProvenance::Order, w)
             }
         }
     } else {
         let mut w = Vec::new();
-        let p = order_pairs(&sen_upds, &tgt_upds, &mut w);
+        let p = order_pairs(&sen_upds, &tgt_upds, options.expected_frame_count, &mut w);
         (p, PairingProvenance::Order, w)
     };
+    index_warnings.append(&mut pair_warnings);
+
+    if let Some(n) = options.expected_frame_count {
+        normalize_pairs_to_authority(n, &mut pairs, &mut index_warnings);
+    }
 
     let per_frame_prov = pairing_mode;
     let frames = pairs
@@ -182,6 +217,7 @@ pub fn build_frame_index(doc: &Document, options: FrameIndexOptions) -> FrameInd
 
     FrameIndex {
         pairing_mode,
+        authority_frame_count: options.expected_frame_count,
         warnings: index_warnings,
         frames,
     }
@@ -200,13 +236,71 @@ struct PairSlot {
     warnings: Vec<String>,
 }
 
+/// Index-level warnings when an authority frame count is supplied (shared with `validate`).
+pub fn authority_frame_count_messages(sen_count: usize, tgt_count: usize, n: u32) -> Vec<String> {
+    let mut warnings = Vec::new();
+    warn_authority_counts(sen_count, tgt_count, n, &mut warnings);
+    warnings
+}
+
+fn warn_authority_counts(sen_count: usize, tgt_count: usize, n: u32, warnings: &mut Vec<String>) {
+    let n_usize = n as usize;
+    if sen_count > n_usize {
+        warnings.push(format!(
+            "SenUpd count ({sen_count}) exceeds authority frame count ({n}); ignoring updates beyond index {}",
+            n.saturating_sub(1)
+        ));
+    }
+    if tgt_count > n_usize {
+        warnings.push(format!(
+            "TgtUpd count ({tgt_count}) exceeds authority frame count ({n}); ignoring updates beyond index {}",
+            n.saturating_sub(1)
+        ));
+    }
+    if sen_count != n_usize {
+        warnings.push(format!(
+            "SenUpd count ({sen_count}) != authority frame count ({n})"
+        ));
+    }
+    if tgt_count != n_usize {
+        warnings.push(format!(
+            "TgtUpd count ({tgt_count}) != authority frame count ({n})"
+        ));
+    }
+}
+
+fn cap_located_updates<T: Clone>(updates: &[T], n: u32) -> Vec<T> {
+    updates.iter().take(n as usize).cloned().collect()
+}
+
+fn normalize_pairs_to_authority(n: u32, pairs: &mut Vec<PairSlot>, warnings: &mut Vec<String>) {
+    let n_usize = n as usize;
+    if pairs.len() > n_usize {
+        warnings.push(format!(
+            "paired timeline length ({}) exceeds authority frame count ({n}); truncating to {n} frames",
+            pairs.len()
+        ));
+        pairs.truncate(n_usize);
+    }
+    while pairs.len() < n_usize {
+        pairs.push(PairSlot {
+            sen: None,
+            tgt: None,
+            warnings: vec!["empty frame (authority padding; no SenUpd/TgtUpd at this index)".into()],
+        });
+    }
+}
+
 fn order_pairs(
     sen_upds: &[LocatedSenUpd],
     tgt_upds: &[LocatedTgtUpd],
+    authority_frame_count: Option<u32>,
     index_warnings: &mut Vec<String>,
 ) -> Vec<PairSlot> {
-    let n = sen_upds.len().max(tgt_upds.len());
-    if sen_upds.len() != tgt_upds.len() {
+    let n = authority_frame_count
+        .map(|c| c as usize)
+        .unwrap_or_else(|| sen_upds.len().max(tgt_upds.len()));
+    if authority_frame_count.is_none() && sen_upds.len() != tgt_upds.len() {
         index_warnings.push(format!(
             "SenUpd count ({}) != TgtUpd count ({}); extra updates appear in frames without a counterpart",
             sen_upds.len(),
@@ -713,6 +807,7 @@ mod tests {
             &doc,
             FrameIndexOptions {
                 use_agtj_heuristics: true,
+                ..FrameIndexOptions::DEFAULT
             },
         );
         assert_eq!(idx.pairing_mode, PairingProvenance::HeuristicAgTJ);
@@ -750,6 +845,67 @@ mod tests {
         assert_eq!(idx.len(), 2);
         assert!(!idx.warnings.is_empty());
         assert!(!idx.frames[1].warnings.is_empty());
+    }
+
+    #[test]
+    fn authority_frame_count_pads_and_warns() {
+        let src = r#"Agt {
+  SenSect { SenUpd { Time 2000 1 0 0 0 0 } SenUpd { Time 2000 1 0 0 0 1 } }
+  TgtSect { TgtUpd { Tgt { Name "only" } } }
+}"#;
+        let doc = parse(src).expect("parse");
+        let idx = build_frame_index(
+            &doc,
+            FrameIndexOptions {
+                expected_frame_count: Some(5),
+                ..FrameIndexOptions::DEFAULT
+            },
+        );
+        assert_eq!(idx.len(), 5);
+        assert_eq!(idx.authority_frame_count, Some(5));
+        assert!(idx.warnings.iter().any(|w| w.contains("SenUpd count (2)")));
+        assert!(idx.warnings.iter().any(|w| w.contains("TgtUpd count (1)")));
+        assert!(idx.frames[0].sensor.is_some());
+        assert!(idx.frames[0].target.is_some());
+        assert!(idx.frames[1].sensor.is_some());
+        assert!(idx.frames[1].target.is_none());
+        assert!(idx.frames[4].sensor.is_none());
+        assert!(idx.frames[4].target.is_none());
+    }
+
+    #[test]
+    fn authority_frame_count_unset_unchanged() {
+        let src = r#"Agt {
+  SenSect { SenUpd { Time 2000 1 0 0 0 0 } SenUpd { Time 2000 1 0 0 0 1 } }
+  TgtSect { TgtUpd { Tgt { Name "only" } } }
+}"#;
+        let doc = parse(src).expect("parse");
+        let idx = build_frame_index(&doc, FrameIndexOptions::DEFAULT);
+        assert_eq!(idx.len(), 2);
+        assert!(idx.authority_frame_count.is_none());
+    }
+
+    #[test]
+    fn authority_frame_count_caps_excess_sen() {
+        let src = r#"Agt {
+  SenSect {
+    SenUpd { Time 2000 1 0 0 0 0 }
+    SenUpd { Time 2000 1 0 0 0 1 }
+    SenUpd { Time 2000 1 0 0 0 2 }
+  }
+  TgtSect { TgtUpd { Tgt { Name "t" } } }
+}"#;
+        let doc = parse(src).expect("parse");
+        let idx = build_frame_index(
+            &doc,
+            FrameIndexOptions {
+                expected_frame_count: Some(1),
+                ..FrameIndexOptions::DEFAULT
+            },
+        );
+        assert_eq!(idx.len(), 1);
+        assert!(idx.warnings.iter().any(|w| w.contains("exceeds authority")));
+        assert!(idx.frames[0].sensor.is_some());
     }
 
     #[test]

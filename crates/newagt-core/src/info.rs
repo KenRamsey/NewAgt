@@ -99,8 +99,12 @@ pub fn format_info(
     summary: &DocumentSummary,
     frames: &FrameIndex,
 ) -> String {
+    let authority = frames
+        .authority_frame_count
+        .map(|n| format!("\nframes: authority_count={n}"))
+        .unwrap_or_default();
     format!(
-        "path: {path}\nprofile: {profile}\nsections: PrjSect={} SenSect={} TgtSect={}\nupdates: SenUpd={} TgtUpd={}\ntargets: Tgt={}\nframes: count={} pairing={}\n",
+        "path: {path}\nprofile: {profile}\nsections: PrjSect={} SenSect={} TgtSect={}\nupdates: SenUpd={} TgtUpd={}\ntargets: Tgt={}\nframes: count={} pairing={}{authority}\n",
         summary.prj_sect,
         summary.sen_sect,
         summary.tgt_sect,

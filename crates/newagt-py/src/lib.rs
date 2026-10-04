@@ -128,11 +128,16 @@ fn parse(path_or_str: &str, profile: &str) -> PyResult<ParsedDocument> {
 
 /// Validate an AGT file; returns a JSON-serializable report dict.
 #[pyfunction]
-#[pyo3(name = "validate", signature = (path, profile="agtj"))]
-fn validate_py(path: &str, profile: &str, py: Python<'_>) -> PyResult<Py<PyAny>> {
+#[pyo3(name = "validate", signature = (path, profile="agtj", frame_count=None))]
+fn validate_py(
+    path: &str,
+    profile: &str,
+    frame_count: Option<u32>,
+    py: Python<'_>,
+) -> PyResult<Py<PyAny>> {
     let profile = parse_profile_name(profile)?;
     let (source, _) = read_path(path)?;
-    let report = validate(&source, ParseOptions { profile });
+    let report = validate(&source, ParseOptions { profile }, frame_count);
     let json = newagt_core::format_report_json(&report);
     let value: serde_json::Value =
         serde_json::from_str(&json).map_err(|e| PyValueError::new_err(e.to_string()))?;
@@ -141,12 +146,18 @@ fn validate_py(path: &str, profile: &str, py: Python<'_>) -> PyResult<Py<PyAny>>
 
 /// Build trainer-facing frame records from an AGT file.
 #[pyfunction]
-#[pyo3(signature = (path, heuristic=false))]
-fn frames(path: &str, heuristic: bool, py: Python<'_>) -> PyResult<Py<PyAny>> {
+#[pyo3(signature = (path, heuristic=false, frame_count=None))]
+fn frames(
+    path: &str,
+    heuristic: bool,
+    frame_count: Option<u32>,
+    py: Python<'_>,
+) -> PyResult<Py<PyAny>> {
     let (source, _) = read_path(path)?;
     let result = parse_inner(&source, ParseProfile::default())?;
     let options = FrameIndexOptions {
         use_agtj_heuristics: heuristic,
+        expected_frame_count: frame_count,
     };
     let index = build_frame_index(&result.document, options);
     let value = serde_json::to_value(&index.frames)
@@ -156,7 +167,7 @@ fn frames(path: &str, heuristic: bool, py: Python<'_>) -> PyResult<Py<PyAny>> {
 
 /// Resolve bounding boxes for targets across frames.
 #[pyfunction]
-#[pyo3(signature = (path, image_width, image_height, fov_h, fov_v, tgt_dat=None, method="score", heuristic=false))]
+#[pyo3(signature = (path, image_width, image_height, fov_h, fov_v, tgt_dat=None, method="score", heuristic=false, frame_count=None))]
 #[allow(clippy::too_many_arguments)]
 fn bboxes(
     path: &str,
@@ -167,6 +178,7 @@ fn bboxes(
     tgt_dat: Option<&str>,
     method: &str,
     heuristic: bool,
+    frame_count: Option<u32>,
     py: Python<'_>,
 ) -> PyResult<Py<PyAny>> {
     let (source, _) = read_path(path)?;
@@ -182,6 +194,7 @@ fn bboxes(
         method,
         frame_index: FrameIndexOptions {
             use_agtj_heuristics: heuristic,
+            expected_frame_count: frame_count,
         },
         ..Default::default()
     };

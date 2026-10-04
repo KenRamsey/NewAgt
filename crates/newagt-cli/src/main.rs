@@ -22,6 +22,10 @@ struct Cli {
     #[arg(long, value_name = "PROFILE", default_value = "agtj", global = true)]
     profile: String,
 
+    /// Optional authority frame count for indexing and validation (ARF not read yet).
+    #[arg(long, value_name = "N", global = true)]
+    frame_count: Option<u32>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -129,15 +133,22 @@ fn main() -> ExitCode {
     };
     let parse_opts = ParseOptions { profile };
 
+    let frame_opts = |heuristic: bool| FrameIndexOptions {
+        use_agtj_heuristics: heuristic,
+        expected_frame_count: cli.frame_count,
+    };
+
     match cli.command {
         Commands::Info {
             path,
             recursive,
             limit,
-        } => run_info(&path, profile, parse_opts, recursive, limit),
-        Commands::Frames { path, heuristic } => run_frames(&path, parse_opts, heuristic),
+        } => run_info(&path, profile, parse_opts, recursive, limit, cli.frame_count),
+        Commands::Frames { path, heuristic } => run_frames(&path, parse_opts, frame_opts(heuristic)),
         Commands::Dump { path } => run_dump(&path, parse_opts),
-        Commands::Validate { path, format } => run_validate(&path, parse_opts, format),
+        Commands::Validate { path, format } => {
+            run_validate(&path, parse_opts, format, cli.frame_count)
+        }
         Commands::Bboxes {
             path,
             tgt_dat,
@@ -159,7 +170,7 @@ fn main() -> ExitCode {
                 fov_v,
                 method: method.into(),
                 ignore_pix_box,
-                heuristic,
+                frame_index: frame_opts(heuristic),
             },
         ),
         Commands::ToJson { path, output, spans } => run_to_json(&path, parse_opts, output, spans),
@@ -204,6 +215,7 @@ fn run_info(
     options: ParseOptions,
     recursive_flag: bool,
     limit: Option<usize>,
+    authority_frame_count: Option<u32>,
 ) -> ExitCode {
     let meta = match fs::metadata(path) {
         Ok(m) => m,
@@ -214,7 +226,7 @@ fn run_info(
     };
 
     if meta.is_dir() {
-        return run_info_directory(path, options, recursive_flag, limit);
+        return run_info_directory(path, options, recursive_flag, limit, authority_frame_count);
     }
 
     if limit.is_some() {
@@ -222,7 +234,7 @@ fn run_info(
         return ExitCode::from(2);
     }
 
-    run_info_file(path, profile, options)
+    run_info_file(path, profile, options, authority_frame_count)
 }
 
 fn run_info_directory(
@@ -230,6 +242,7 @@ fn run_info_directory(
     options: ParseOptions,
     recursive: bool,
     limit: Option<usize>,
+    authority_frame_count: Option<u32>,
 ) -> ExitCode {
     let mut files = Vec::new();
     if let Err(code) = collect_agt_files(dir, recursive, &mut files) {
@@ -248,7 +261,13 @@ fn run_info_directory(
             Ok(source) => match newagt_core::parse_with_options(&source, options) {
                 Ok(result) => {
                     let summary = summarize_document(&result.document);
-                    let frames = build_frame_index(&result.document, FrameIndexOptions::DEFAULT);
+                    let frames = build_frame_index(
+                        &result.document,
+                        FrameIndexOptions {
+                            expected_frame_count: authority_frame_count,
+                            ..FrameIndexOptions::DEFAULT
+                        },
+                    );
                     text.push_str(&format_info_batch_line(
                         &display,
                         Some(frames.len()),
@@ -278,7 +297,12 @@ fn run_info_directory(
     }
 }
 
-fn run_info_file(path: &Path, profile: ParseProfile, options: ParseOptions) -> ExitCode {
+fn run_info_file(
+    path: &Path,
+    profile: ParseProfile,
+    options: ParseOptions,
+    authority_frame_count: Option<u32>,
+) -> ExitCode {
     let source = match read_source(path) {
         Ok(s) => s,
         Err(code) => return code,
@@ -286,7 +310,13 @@ fn run_info_file(path: &Path, profile: ParseProfile, options: ParseOptions) -> E
     match newagt_core::parse_with_options(&source, options) {
         Ok(result) => {
             let summary = summarize_document(&result.document);
-            let frames = build_frame_index(&result.document, FrameIndexOptions::DEFAULT);
+            let frames = build_frame_index(
+                &result.document,
+                FrameIndexOptions {
+                    expected_frame_count: authority_frame_count,
+                    ..FrameIndexOptions::DEFAULT
+                },
+            );
             let text = format_info(
                 &path.display().to_string(),
                 profile.as_str(),
@@ -313,7 +343,7 @@ struct BboxesRun {
     fov_v: Option<f64>,
     method: BboxMethod,
     ignore_pix_box: bool,
-    heuristic: bool,
+    frame_index: FrameIndexOptions,
 }
 
 fn run_bboxes(path: &Path, options: ParseOptions, run: BboxesRun) -> ExitCode {
@@ -338,9 +368,7 @@ fn run_bboxes(path: &Path, options: ParseOptions, run: BboxesRun) -> ExitCode {
                 },
                 method: run.method,
                 ignore_pix_box: run.ignore_pix_box,
-                frame_index: FrameIndexOptions {
-                    use_agtj_heuristics: run.heuristic,
-                },
+                frame_index: run.frame_index,
             };
             match resolve_bboxes(&result.document, &bbox_opts) {
                 Ok(index) => {
@@ -369,19 +397,14 @@ fn run_bboxes(path: &Path, options: ParseOptions, run: BboxesRun) -> ExitCode {
     }
 }
 
-fn run_frames(path: &Path, options: ParseOptions, heuristic: bool) -> ExitCode {
+fn run_frames(path: &Path, options: ParseOptions, frame_index: FrameIndexOptions) -> ExitCode {
     let source = match read_source(path) {
         Ok(s) => s,
         Err(code) => return code,
     };
     match newagt_core::parse_with_options(&source, options) {
         Ok(result) => {
-            let index = build_frame_index(
-                &result.document,
-                FrameIndexOptions {
-                    use_agtj_heuristics: heuristic,
-                },
-            );
+            let index = build_frame_index(&result.document, frame_index);
             let mut text = String::new();
             if !index.warnings.is_empty() {
                 for w in &index.warnings {
@@ -462,7 +485,12 @@ fn run_to_json(
     }
 }
 
-fn run_validate(path: &Path, options: ParseOptions, format: ReportFormat) -> ExitCode {
+fn run_validate(
+    path: &Path,
+    options: ParseOptions,
+    format: ReportFormat,
+    authority_frame_count: Option<u32>,
+) -> ExitCode {
     let source = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
@@ -471,7 +499,7 @@ fn run_validate(path: &Path, options: ParseOptions, format: ReportFormat) -> Exi
         }
     };
 
-    let report = validate(&source, options);
+    let report = validate(&source, options, authority_frame_count);
     let output = match format {
         ReportFormat::Text => format_report_text(&report),
         ReportFormat::Json => format_report_json(&report),

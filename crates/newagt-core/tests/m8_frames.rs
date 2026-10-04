@@ -21,6 +21,7 @@ fn two_pair_heuristic_mode() {
         &doc,
         FrameIndexOptions {
             use_agtj_heuristics: true,
+            ..FrameIndexOptions::DEFAULT
         },
     );
     assert_eq!(idx.pairing_mode, PairingProvenance::HeuristicAgTJ);
