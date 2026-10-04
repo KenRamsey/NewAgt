@@ -8,7 +8,7 @@ The on-disk format is documented starting from **`Agt-1992.pdf`** (legacy tree `
 
 ## Status
 
-Early development (M0 scaffold). Parsing is not implemented yet.
+Early development (M1 lexer in `newagt-core::lex`; parser M2 not started).
 
 - Format summary (from `Agt-1992.pdf`): [docs/agt-format-spec-1992.md](docs/agt-format-spec-1992.md)
 - Implementation milestones: [docs/agt-implementation-plan.md](docs/agt-implementation-plan.md)
