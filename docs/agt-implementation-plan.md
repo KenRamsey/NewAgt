@@ -210,9 +210,20 @@
 - Adventure Game Toolkit (`*.DA1`, AGiliTy, `agtout`).
 - Writing ARF imagery or transcoding rasters.
 - Requiring strict PDF compliance for load success.
+- Checking private corpus paths or scan artifacts into the public repo.
+
+---
+
+## Post-M10 (optional)
+
+| Item | Notes |
+|------|--------|
+| Corpus benchmarking (private mount) | Documented in [corpus-testing.md](corpus-testing.md); use `newagt info` with `--limit` or local TSV redirects. |
+| Full-tree timing / failure histograms | Offline scripts over local `info`/`validate` output—not CI. |
+| Trainer integration | PyO3 module exists; deeper PyTorch dataset wiring as needed. |
 
 ---
 
 ## Immediate next step after this doc
 
-M0–M10 milestones for the Rust CLI and core are complete; follow-on work is trainer integration and optional corpus-scale profiling on private data.
+M0–M10 milestones for the Rust CLI and core are complete; optional next work is corpus-scale profiling on private data (see [corpus-testing.md](corpus-testing.md)) and trainer integration.

@@ -46,7 +46,7 @@ cargo run --release -- info /path/to/agt/corpus/
 | `validate` | Parse file and print a text or JSON validation report (exit 0 if loadable) |
 | `dump` | Indented tree of containers and fields (exit 0 on successful parse) |
 | `to-json` | Export `newagt.schema.v1` JSON; optional `--spans` for source locations |
-| `info` | Single file: path, profile, section/update/target counts; directory: one tab-separated summary line per `.agt` (walks subdirectories by default; `--recursive` documents the same behavior) |
+| `info` | Single file: path, profile, section/update/target counts; directory: one tab-separated summary line per `.agt` (walks subdirectories by default; `--limit N` caps batch size) |
 
 Use `--profile agtj` (default) or `--profile pdf1999` on any subcommand.
 
@@ -104,6 +104,11 @@ cargo clippy -- -D warnings
 ## Fixtures
 
 Use Ken’s imagery AGT corpus locally for integration tests (not bundled in this repo).
+
+### Testing against your corpus
+
+For stress-testing directory walks and real-world parse tolerance, point the CLI at your own bulk-storage tree (set `$CORPUS_ROOT` locally—never commit mount paths). See [docs/corpus-testing.md](docs/corpus-testing.md) for access checks, `newagt info` batch mode, `--limit` samples, and privacy rules.
+
 
 ## License
 

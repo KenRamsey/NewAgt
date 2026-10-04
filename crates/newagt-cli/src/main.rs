@@ -55,6 +55,9 @@ enum Commands {
         /// When PATH is a directory, include `.agt` files in subdirectories (default: true).
         #[arg(long, default_value_t = true)]
         recursive: bool,
+        /// When PATH is a directory, process at most N `.agt` files (after sorting paths).
+        #[arg(long, value_name = "N")]
+        limit: Option<usize>,
     },
     /// List trainer frame index (one summary line per frame).
     Frames {
@@ -127,7 +130,11 @@ fn main() -> ExitCode {
     let parse_opts = ParseOptions { profile };
 
     match cli.command {
-        Commands::Info { path, recursive } => run_info(&path, profile, parse_opts, recursive),
+        Commands::Info {
+            path,
+            recursive,
+            limit,
+        } => run_info(&path, profile, parse_opts, recursive, limit),
         Commands::Frames { path, heuristic } => run_frames(&path, parse_opts, heuristic),
         Commands::Dump { path } => run_dump(&path, parse_opts),
         Commands::Validate { path, format } => run_validate(&path, parse_opts, format),
@@ -196,6 +203,7 @@ fn run_info(
     profile: ParseProfile,
     options: ParseOptions,
     recursive_flag: bool,
+    limit: Option<usize>,
 ) -> ExitCode {
     let meta = match fs::metadata(path) {
         Ok(m) => m,
@@ -206,18 +214,31 @@ fn run_info(
     };
 
     if meta.is_dir() {
-        return run_info_directory(path, options, recursive_flag);
+        return run_info_directory(path, options, recursive_flag, limit);
+    }
+
+    if limit.is_some() {
+        eprintln!("newagt info: --limit applies only when PATH is a directory");
+        return ExitCode::from(2);
     }
 
     run_info_file(path, profile, options)
 }
 
-fn run_info_directory(dir: &Path, options: ParseOptions, recursive: bool) -> ExitCode {
+fn run_info_directory(
+    dir: &Path,
+    options: ParseOptions,
+    recursive: bool,
+    limit: Option<usize>,
+) -> ExitCode {
     let mut files = Vec::new();
     if let Err(code) = collect_agt_files(dir, recursive, &mut files) {
         return code;
     }
     files.sort();
+    if let Some(n) = limit {
+        files.truncate(n);
+    }
 
     let mut text = String::new();
     let mut any_fail = false;

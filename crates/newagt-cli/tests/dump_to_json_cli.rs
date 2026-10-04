@@ -119,3 +119,37 @@ fn info_directory_emits_one_line_per_agt() {
         assert!(line.contains("parse: ok"));
     }
 }
+
+#[test]
+fn info_directory_limit_caps_output_lines() {
+    let root = std::env::temp_dir().join(format!("newagt-info-limit-{}", std::process::id()));
+    std::fs::create_dir_all(&root).expect("temp dir");
+    let src = fixture("minimal_agt_tgt.agt");
+    for name in ["a.agt", "b.agt", "c.agt"] {
+        std::fs::copy(&src, root.join(name)).expect("copy agt");
+    }
+
+    let output = Command::new(newagt_bin())
+        .args([
+            "info",
+            root.to_str().expect("utf8 path"),
+            "--limit",
+            "2",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .expect("run newagt info --limit");
+
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout).lines().count(),
+        2
+    );
+}
