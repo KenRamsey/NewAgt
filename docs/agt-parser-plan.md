@@ -1,8 +1,9 @@
 # NewAgt — AGT Parser Implementation Plan
 
-**Status:** Research complete, implementation not started (updated with Ken’s AGTJ context)  
-**Repo:** `/workspace` (NewAgt) — empty except git (`main`, single commit `85d15a1` “Initialize project”, no tracked files)  
-**Date:** 2026-10-02
+> **⚠️ OBSOLETE (2026-10-04):** This document describes the **Adventure Game Toolkit** by mistake — **not** Ken’s **imagery ground truth AGT** (`Agt-1992.pdf`, NewC_r529/AGTJ). **Do not implement from this file.** Replace after reading the PDF. See [domain correction](agt-domain-correction.md).
+
+**Status:** **Withdrawn** — wrong domain  
+**Date:** 2026-10-02 (superseded 2026-10-04)
 
 ---
 

@@ -1,6 +1,6 @@
-//! Core library for parsing Adventure Game Toolkit (AGT) game bundles.
+//! Core library for parsing imagery ground truth AGT containers.
 //!
-//! Milestone M0: crate scaffold only; DA1 and record readers come in later milestones.
+//! Milestone M0: crate scaffold only; format readers come after `Agt-1992.pdf` alignment.
 
 /// Library version (matches `Cargo.toml`).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

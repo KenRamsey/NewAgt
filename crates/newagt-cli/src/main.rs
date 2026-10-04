@@ -8,7 +8,7 @@ use newagt_core::VERSION;
 #[command(
     name = "newagt",
     version,
-    about = "Read, validate, and convert Adventure Game Toolkit (AGT) game files"
+    about = "Read, validate, and convert imagery ground truth AGT containers"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -22,7 +22,7 @@ enum Commands {
         /// Game directory or basename path.
         path: PathBuf,
     },
-    /// Human-readable dump (agtout-style; not yet implemented).
+    /// Human-readable dump (not yet implemented).
     Dump {
         path: PathBuf,
     },

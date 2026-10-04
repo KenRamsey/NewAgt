@@ -1,32 +1,33 @@
 # NewAgt
 
-Modern tooling for **Adventure Game Toolkit (AGT)** game files — read, validate, and convert legacy AGT data without DOS-era utilities.
+Rust tooling for **imagery ground truth AGT** — read, validate, and index AGT containers used in **image-stream / training** pipelines (PyTorch and Python consumers planned).
 
-AGT games ship as a bundle of files (`*.DA1`, `*.DA2`, `*.DA3`, optional `*.DA4`–`*.DA6`, and encrypted messages in `*.D$$`). NewAgt parses these into a structured model for preservation, analysis, and conversion (JSON and, eventually, AGX). Real-world files are often non-compliant yet loadable; the parser is designed for **tolerant reading** where safe (see [docs/agt-real-world-format.md](docs/agt-real-world-format.md)).
+**AGT here is not the Adventure Game Toolkit** (text adventures, `*.DA1`, AGiliTy). See [docs/agt-domain-correction.md](docs/agt-domain-correction.md).
 
-This project is a **clean-room** implementation informed by the community’s [AGiliTy](https://github.com/DavidKinder/Windows-AGiliTy) interpreter behavior and validated against real game files. Legacy AGTJ / 1992 documentation is used only as non-authoritative hints. It is not a fork of AGiliTy or AGTJ.
+The on-disk format is documented starting from **`Agt-1992.pdf`** (legacy tree `NewC_r529/AGTJ`) and Ken’s real training files. Many files are **non-compliant** with the written spec yet still **loadable**; **`COMMENT`** and **`KEYWORD`** often carry extra ground truth (see [docs/agt-real-world-format.md](docs/agt-real-world-format.md)). Legacy **AGTJ** code under `NewC_r529` is a loose hint only — not authoritative.
 
 ## Status
 
 Early development (M0 scaffold). Parsing is not implemented yet.
 
-- Plan: [docs/agt-parser-plan.md](docs/agt-parser-plan.md)
+- Domain: [docs/agt-domain-correction.md](docs/agt-domain-correction.md)
 - Wild-format notes: [docs/agt-real-world-format.md](docs/agt-real-world-format.md)
+- Old adventure-game plan (obsolete): [docs/agt-parser-plan.md](docs/agt-parser-plan.md)
 
 ## Quick start
 
 ```bash
 cargo build --release
-cargo run --release -- info /path/to/game/ELECTRA
+cargo run --release -- info /path/to/agt/container-or-dir
 ```
 
 CLI subcommands (stubs for now):
 
 | Command | Purpose |
 |---------|---------|
-| `info` | Summarize discovered files and version hints |
-| `dump` | Human-readable dump (agtout-style) |
-| `validate` | Cross-check ranges, pointers, record sizes |
+| `info` | Summarize discovered AGT inputs and layout hints |
+| `dump` | Human-readable dump of parsed structure |
+| `validate` | Report spec mismatches and structural issues |
 | `to-json` | Export structured JSON |
 
 Each stub exits with code `2` and prints `not yet implemented`.
@@ -40,7 +41,7 @@ cargo clippy -- -D warnings
 
 ## Fixtures
 
-Download sample AGT games from the [IF Archive AGT collection](https://www.ifarchive.org/indexes/if-archive/games/agt/) for local testing (not bundled in this repo yet).
+Use Ken’s imagery AGT corpus locally for integration tests (not bundled in this repo).
 
 ## License
 

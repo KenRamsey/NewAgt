@@ -27,7 +27,7 @@ Users **jammed data** that “really belonged elsewhere” in the spec into COMM
 ### 1. Parse model — preserve, don’t normalize away
 
 - **Capture raw COMMENT/KEYWORD occurrences** (position, container context, payload bytes/text) even when semantics are unknown.
-- **Structured fields first** where the spec/AGiliTy layout is clear; **extension bucket** for everything else.
+- **Structured fields first** where the spec or legacy AGTJ layout is clear; **extension bucket** for everything else.
 - **Do not fail** the whole file on “invalid” COMMENT/KEYWORD usage unless the container is truly unreadable.
 
 ### 2. Validation is reporting, not gatekeeping
@@ -46,17 +46,18 @@ Users **jammed data** that “really belonged elsewhere” in the spec into COMM
 - Image-stream ground truth may live in **non-spec COMMENT/KEYWORD** slots — indexing must expose **raw + best-effort interpreted** views (e.g. frame list from heuristics, with provenance: “pattern v3 from corpus 2026-02”).
 - Training pipelines need **stable column names** in Python even when on-disk layout is messy — map messy → canonical in the **Python layer**, fed by rich native index.
 
-### 5. Reference hierarchy (unchanged)
+### 5. Reference hierarchy (revised)
 
-Spec and AGTJ = skeleton. **Empirical corpus + AGiliTy behavior** = what we must not break. COMMENT/KEYWORD innovation = **first-class data**, not errors.
+See [domain correction](agt-domain-correction.md). **`Agt-1992.pdf`** and **AGTJ** are a skeleton; **Ken’s training corpus** is what parsers must not break. COMMENT/KEYWORD innovation is **first-class data**, not errors.
 
 ## Open work (later milestones)
 
 - [ ] Inventory COMMENT/KEYWORD patterns in Ken’s corpus (and public samples where licensed).
 - [ ] Define `newagt` extension record schema (unknown payload types, hashes, optional JSON sidecar for trainers).
-- [ ] Compare AGTJ vs AGiliTy vs bytes for contested slots; log in `format-notes.md`.
+- [ ] Compare AGTJ vs on-disk bytes for contested slots; log in `format-notes.md`.
 
 ## Related docs
 
-- [AGT parser plan](agt-parser-plan.md) — milestones, validation phase  
+- [Domain correction](agt-domain-correction.md) — imagery AGT vs wrong “Adventure Game Toolkit” research  
+- [AGT parser plan](agt-parser-plan.md) — **obsolete** adventure-game plan (historical only)  
 - [Format notes](format-notes.md) — triangulated layout deltas
