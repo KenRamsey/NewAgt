@@ -29,7 +29,9 @@ pub use frames::{
     build_frame_index, format_frame_line, parse_frame_number, Frame, FrameIndex,
     FrameIndexOptions, PairingProvenance, SensorFrameSide, TargetEntry, TargetFrameSide,
 };
-pub use info::{format_info, summarize_document, DocumentSummary};
+pub use info::{
+    format_info, format_info_batch_line, sections_present, summarize_document, DocumentSummary,
+};
 pub use json_export::{
     export_document, export_parse_result, JsonExportOptions, JsonExportRoot, SCHEMA_V1,
 };

@@ -8,13 +8,26 @@ The on-disk format is documented starting from **`Agt-1992.pdf`** (legacy tree `
 
 ## Status
 
-Early development through **M9** (Rust CLI + **`newagt` Python module** via PyO3: parse, validate, frames, bboxes; plus `newagt dump`, `to-json`, `info`, `frames`, `bboxes` CLI and `Document::frames` / `Document::bboxes` in `newagt-core`).
+Early development through **M10** (Rust CLI + **`newagt` Python module** via PyO3: parse, validate, frames, bboxes; batch `info` on directories; GitHub Actions CI; plus `newagt dump`, `to-json`, `info`, `frames`, `bboxes` CLI and `Document::frames` / `Document::bboxes` in `newagt-core`).
 
 - Format summary (from `Agt-1992.pdf`): [docs/agt-format-spec-1992.md](docs/agt-format-spec-1992.md)
 - Implementation milestones: [docs/agt-implementation-plan.md](docs/agt-implementation-plan.md)
 - Domain: [docs/agt-domain-correction.md](docs/agt-domain-correction.md)
 - Wild-format notes: [docs/agt-real-world-format.md](docs/agt-real-world-format.md)
 - Old adventure-game plan (obsolete): [docs/agt-parser-plan.md](docs/agt-parser-plan.md)
+
+## Installing
+
+Build and install the `newagt` CLI from this repository (requires Rust ≥ 1.74):
+
+```bash
+# from repo root — installs the workspace binary crate
+cargo install --locked --path crates/newagt-cli
+
+# or build a release binary without installing
+cargo build --release -p newagt-cli
+# binary: target/release/newagt
+```
 
 ## Quick start
 
@@ -25,6 +38,7 @@ cargo run --release -- dump /path/to/file.agt
 cargo run --release -- to-json /path/to/file.agt
 cargo run --release -- to-json --spans /path/to/file.agt -o out.json
 cargo run --release -- info /path/to/file.agt
+cargo run --release -- info /path/to/agt/corpus/
 ```
 
 | Command | Purpose |
@@ -32,7 +46,7 @@ cargo run --release -- info /path/to/file.agt
 | `validate` | Parse file and print a text or JSON validation report (exit 0 if loadable) |
 | `dump` | Indented tree of containers and fields (exit 0 on successful parse) |
 | `to-json` | Export `newagt.schema.v1` JSON; optional `--spans` for source locations |
-| `info` | File path, profile, and section/update/target counts |
+| `info` | Single file: path, profile, section/update/target counts; directory: one tab-separated summary line per `.agt` (walks subdirectories by default; `--recursive` documents the same behavior) |
 
 Use `--profile agtj` (default) or `--profile pdf1999` on any subcommand.
 

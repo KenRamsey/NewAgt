@@ -6,8 +6,9 @@ use std::process::ExitCode;
 
 use newagt_core::{
     build_frame_index, dump_document, export_parse_result, format_frame_line, format_info,
-    format_report_json, format_report_text, resolve_bboxes, summarize_document, validate,
-    BboxMethod, BBoxOptions, FrameIndexOptions, JsonExportOptions, ParseOptions, ParseProfile,
+    format_info_batch_line, format_report_json, format_report_text, resolve_bboxes,
+    sections_present, summarize_document, validate, BboxMethod, BBoxOptions, FrameIndexOptions,
+    JsonExportOptions, ParseOptions, ParseProfile,
 };
 
 #[derive(Parser)]
@@ -48,9 +49,12 @@ impl From<BboxMethodCli> for BboxMethod {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Summarize AGT file path, profile, and section counts.
+    /// Summarize AGT file path, profile, and section counts (or one line per `.agt` under a directory).
     Info {
         path: PathBuf,
+        /// When PATH is a directory, include `.agt` files in subdirectories (default: true).
+        #[arg(long, default_value_t = true)]
+        recursive: bool,
     },
     /// List trainer frame index (one summary line per frame).
     Frames {
@@ -123,7 +127,7 @@ fn main() -> ExitCode {
     let parse_opts = ParseOptions { profile };
 
     match cli.command {
-        Commands::Info { path } => run_info(&path, profile, parse_opts),
+        Commands::Info { path, recursive } => run_info(&path, profile, parse_opts, recursive),
         Commands::Frames { path, heuristic } => run_frames(&path, parse_opts, heuristic),
         Commands::Dump { path } => run_dump(&path, parse_opts),
         Commands::Validate { path, format } => run_validate(&path, parse_opts, format),
@@ -162,7 +166,98 @@ fn read_source(path: &Path) -> Result<String, ExitCode> {
     })
 }
 
-fn run_info(path: &Path, profile: ParseProfile, options: ParseOptions) -> ExitCode {
+fn collect_agt_files(dir: &Path, recursive: bool, out: &mut Vec<PathBuf>) -> Result<(), ExitCode> {
+    let entries = fs::read_dir(dir).map_err(|e| {
+        eprintln!("newagt info: {}: {e}", dir.display());
+        ExitCode::from(1)
+    })?;
+    for entry in entries {
+        let entry = entry.map_err(|e| {
+            eprintln!("newagt info: {}: {e}", dir.display());
+            ExitCode::from(1)
+        })?;
+        let path = entry.path();
+        if path.is_dir() {
+            if recursive {
+                collect_agt_files(&path, true, out)?;
+            }
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("agt"))
+        {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn run_info(
+    path: &Path,
+    profile: ParseProfile,
+    options: ParseOptions,
+    recursive_flag: bool,
+) -> ExitCode {
+    let meta = match fs::metadata(path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("newagt info: {}: {e}", path.display());
+            return ExitCode::from(1);
+        }
+    };
+
+    if meta.is_dir() {
+        return run_info_directory(path, options, recursive_flag);
+    }
+
+    run_info_file(path, profile, options)
+}
+
+fn run_info_directory(dir: &Path, options: ParseOptions, recursive: bool) -> ExitCode {
+    let mut files = Vec::new();
+    if let Err(code) = collect_agt_files(dir, recursive, &mut files) {
+        return code;
+    }
+    files.sort();
+
+    let mut text = String::new();
+    let mut any_fail = false;
+    for file in &files {
+        let display = file.display().to_string();
+        match fs::read_to_string(file) {
+            Ok(source) => match newagt_core::parse_with_options(&source, options) {
+                Ok(result) => {
+                    let summary = summarize_document(&result.document);
+                    let frames = build_frame_index(&result.document, FrameIndexOptions::DEFAULT);
+                    text.push_str(&format_info_batch_line(
+                        &display,
+                        Some(frames.len()),
+                        &sections_present(&summary),
+                        true,
+                    ));
+                }
+                Err(_) => {
+                    any_fail = true;
+                    text.push_str(&format_info_batch_line(&display, None, "-", false));
+                }
+            },
+            Err(_) => {
+                any_fail = true;
+                text.push_str(&format_info_batch_line(&display, None, "-", false));
+            }
+        }
+    }
+
+    if write_stdout(&text).is_err() {
+        return ExitCode::from(1);
+    }
+    if any_fail {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn run_info_file(path: &Path, profile: ParseProfile, options: ParseOptions) -> ExitCode {
     let source = match read_source(path) {
         Ok(s) => s,
         Err(code) => return code,

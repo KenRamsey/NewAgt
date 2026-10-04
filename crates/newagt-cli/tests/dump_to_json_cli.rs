@@ -85,3 +85,37 @@ fn info_prints_section_counts() {
     assert!(stdout.contains("Tgt=1"));
     assert!(stdout.contains("frames: count="));
 }
+
+#[test]
+fn info_directory_emits_one_line_per_agt() {
+    let root = std::env::temp_dir().join(format!("newagt-info-dir-{}", std::process::id()));
+    let nested = root.join("nested");
+    std::fs::create_dir_all(&nested).expect("temp dirs");
+    let src = fixture("minimal_agt_tgt.agt");
+    std::fs::copy(&src, root.join("top.agt")).expect("copy top");
+    std::fs::copy(&src, nested.join("deep.agt")).expect("copy nested");
+
+    let output = Command::new(newagt_bin())
+        .args(["info", root.to_str().expect("utf8 path")])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .expect("run newagt info on directory");
+
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 2);
+    for line in lines {
+        assert!(line.contains("path:"));
+        assert!(line.contains("frames:"));
+        assert!(line.contains("sections:"));
+        assert!(line.contains("parse: ok"));
+    }
+}

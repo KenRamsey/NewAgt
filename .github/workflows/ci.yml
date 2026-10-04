@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo test
+        run: cargo test --locked
+
+      - name: cargo clippy
+        run: cargo clippy --locked -- -D warnings
+
+      - name: Build CLI (release)
+        run: cargo build --locked --release -p newagt-cli
+
+      - name: Smoke CLI on fixtures
+        run: |
+          FIX="${{ github.workspace }}/crates/newagt-core/tests/fixtures/minimal_agt_tgt.agt"
+          cargo run --locked --release -p newagt-cli -- validate "$FIX"
+          cargo run --locked --release -p newagt-cli -- info "$FIX"

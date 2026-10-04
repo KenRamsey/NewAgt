@@ -59,6 +59,39 @@ fn pairing_mode_label(mode: PairingProvenance) -> &'static str {
     }
 }
 
+/// Comma-separated section names that appear at least once.
+pub fn sections_present(summary: &DocumentSummary) -> String {
+    let mut parts = Vec::new();
+    if summary.prj_sect > 0 {
+        parts.push("PrjSect");
+    }
+    if summary.sen_sect > 0 {
+        parts.push("SenSect");
+    }
+    if summary.tgt_sect > 0 {
+        parts.push("TgtSect");
+    }
+    if parts.is_empty() {
+        "-".to_string()
+    } else {
+        parts.join(",")
+    }
+}
+
+/// One-line summary for batch `info` over a directory (tab-separated fields).
+pub fn format_info_batch_line(
+    path: &str,
+    frame_count: Option<usize>,
+    sections: &str,
+    parse_ok: bool,
+) -> String {
+    let frames = frame_count
+        .map(|n| n.to_string())
+        .unwrap_or_else(|| "-".to_string());
+    let status = if parse_ok { "ok" } else { "fail" };
+    format!("path: {path}\tframes: {frames}\tsections: {sections}\tparse: {status}\n")
+}
+
 /// Human-readable summary lines.
 pub fn format_info(
     path: &str,

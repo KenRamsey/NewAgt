@@ -180,12 +180,15 @@
 
 ---
 
-## M10 — Performance and packaging
+## M10 — Performance and packaging (done)
 
 **Deliverables**
 
-- Batch directory walk for `info` (find `.agt`, summarize sections/updates/target counts).
-- `cargo install` release binaries; CI on Ken’s worker with corpus smoke tests (fixtures not in public repo).
+- Batch directory walk for `info` (find `.agt`, one summary line per file: path, frame count, sections present, parse ok/fail; single-file multi-line output unchanged).
+- `cargo install --path crates/newagt-cli` documented in README; workspace publish metadata for `newagt-cli`.
+- GitHub Actions CI (ubuntu): `cargo test`, `clippy -D warnings`, release CLI build, fixture smoke tests (no private corpus).
+
+**Exit:** **Met.**
 
 ---
 
@@ -193,7 +196,7 @@
 
 | Command | Milestone |
 |---------|-----------|
-| `info` | M7 (minimal counts) / M8 frames / M10 batch |
+| `info` | M7 / M8 frames / M10 batch ✓ |
 | `frames` | M8 ✓ |
 | `bboxes` | M8b ✓ |
 | `dump` | M7 ✓ |
@@ -212,4 +215,4 @@
 
 ## Immediate next step after this doc
 
-**Start M1** in `newagt-core`: module layout `lex.rs`, `token.rs`, `keyword.rs`, fixtures under `crates/newagt-core/tests/data/` from PDF examples + one AGTJ prototype header.
+M0–M10 milestones for the Rust CLI and core are complete; follow-on work is trainer integration and optional corpus-scale profiling on private data.

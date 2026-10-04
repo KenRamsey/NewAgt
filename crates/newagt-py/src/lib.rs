@@ -54,7 +54,7 @@ fn json_value_to_py<'py>(
     py: Python<'py>,
     value: &serde_json::Value,
 ) -> PyResult<Bound<'py, PyAny>> {
-    Ok(pythonize(py, value).map_err(|e| PyValueError::new_err(e.to_string()))?)
+    pythonize(py, value).map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
 fn parse_inner(source: &str, profile: ParseProfile) -> PyResult<ParseResult> {
@@ -157,6 +157,7 @@ fn frames(path: &str, heuristic: bool, py: Python<'_>) -> PyResult<Py<PyAny>> {
 /// Resolve bounding boxes for targets across frames.
 #[pyfunction]
 #[pyo3(signature = (path, image_width, image_height, fov_h, fov_v, tgt_dat=None, method="score", heuristic=false))]
+#[allow(clippy::too_many_arguments)]
 fn bboxes(
     path: &str,
     image_width: u32,

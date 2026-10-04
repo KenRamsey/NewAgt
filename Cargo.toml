@@ -6,3 +6,12 @@ resolver = "2"
 edition = "2021"
 license = "MIT"
 rust-version = "1.74"
+version = "0.1.0"
+repository = "https://github.com/KenRamsey/NewAgt"
+homepage = "https://github.com/KenRamsey/NewAgt"
+authors = ["Ken Ramsey"]
+
+# Primary installable binary crate (see README Installing).
+[workspace.metadata.newagt-cli]
+package = "newagt-cli"
+bin = "newagt"

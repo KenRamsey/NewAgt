@@ -1,11 +1,16 @@
 [package]
 name = "newagt-cli"
-version = "0.1.0"
-description = "CLI for NewAgt — read, validate, and convert AGT games"
+version.workspace = true
+description = "CLI for NewAgt — read, validate, and convert imagery ground truth AGT"
 readme = "../../README.md"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords = ["agt", "ground-truth", "imagery", "cli"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "newagt"
