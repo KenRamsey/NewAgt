@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use newagt_core::{
-    format_report_json, format_report_text, validate, ParseOptions, ParseProfile, VERSION,
+    dump_document, export_parse_result, format_info, format_report_json, format_report_text,
+    summarize_document, validate, JsonExportOptions, ParseOptions, ParseProfile,
 };
 
 #[derive(Parser)]
@@ -31,12 +32,11 @@ enum ReportFormat {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Summarize discovered AGT files and inferred version hints.
+    /// Summarize AGT file path, profile, and section counts.
     Info {
-        /// Game directory or basename path.
         path: PathBuf,
     },
-    /// Human-readable dump (not yet implemented).
+    /// Human-readable indented dump of parsed structure.
     Dump {
         path: PathBuf,
     },
@@ -47,12 +47,15 @@ enum Commands {
         #[arg(long, value_enum, default_value = "text")]
         format: ReportFormat,
     },
-    /// Export structured JSON (schema not yet defined).
+    /// Export structured JSON (`newagt.schema.v1`).
     ToJson {
         path: PathBuf,
         /// Output file (stdout if omitted).
         #[arg(short, long)]
         output: Option<PathBuf>,
+        /// Include source line/column/byte spans in JSON nodes.
+        #[arg(long)]
+        spans: bool,
     },
 }
 
@@ -71,22 +74,93 @@ fn main() -> ExitCode {
     let parse_opts = ParseOptions { profile };
 
     match cli.command {
-        Commands::Info { path } => stub("info", profile, &path),
-        Commands::Dump { path } => stub("dump", profile, &path),
+        Commands::Info { path } => run_info(&path, profile, parse_opts),
+        Commands::Dump { path } => run_dump(&path, parse_opts),
         Commands::Validate { path, format } => run_validate(&path, parse_opts, format),
-        Commands::ToJson { path, output } => {
-            let target = output
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| "<stdout>".to_string());
-            eprintln!(
-                "newagt to-json: not yet implemented (core {}, profile: {}, path: {}, output: {})",
-                VERSION,
-                profile,
-                path.display(),
-                target
+        Commands::ToJson { path, output, spans } => run_to_json(&path, parse_opts, output, spans),
+    }
+}
+
+fn read_source(path: &Path) -> Result<String, ExitCode> {
+    fs::read_to_string(path).map_err(|e| {
+        eprintln!("newagt: {}: {e}", path.display());
+        ExitCode::from(1)
+    })
+}
+
+fn run_info(path: &Path, profile: ParseProfile, options: ParseOptions) -> ExitCode {
+    let source = match read_source(path) {
+        Ok(s) => s,
+        Err(code) => return code,
+    };
+    match newagt_core::parse_with_options(&source, options) {
+        Ok(result) => {
+            let summary = summarize_document(&result.document);
+            let text = format_info(&path.display().to_string(), profile.as_str(), &summary);
+            if write_stdout(&text).is_err() {
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("newagt info: parse failed: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn run_dump(path: &Path, options: ParseOptions) -> ExitCode {
+    let source = match read_source(path) {
+        Ok(s) => s,
+        Err(code) => return code,
+    };
+    match newagt_core::parse_with_options(&source, options) {
+        Ok(result) => {
+            let text = dump_document(&result.document);
+            if write_stdout(&text).is_err() {
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("newagt dump: parse failed: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn run_to_json(
+    path: &Path,
+    options: ParseOptions,
+    output: Option<PathBuf>,
+    spans: bool,
+) -> ExitCode {
+    let source = match read_source(path) {
+        Ok(s) => s,
+        Err(code) => return code,
+    };
+    match newagt_core::parse_with_options(&source, options) {
+        Ok(result) => {
+            let json = export_parse_result(
+                &result,
+                options.profile,
+                JsonExportOptions {
+                    include_spans: spans,
+                },
             );
-            ExitCode::from(2)
+            if let Some(out_path) = output {
+                if let Err(e) = fs::write(&out_path, &json) {
+                    eprintln!("newagt to-json: {}: {e}", out_path.display());
+                    return ExitCode::from(1);
+                }
+            } else if write_stdout(&json).is_err() {
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("newagt to-json: parse failed: {e}");
+            ExitCode::from(1)
         }
     }
 }
@@ -106,7 +180,7 @@ fn run_validate(path: &Path, options: ParseOptions, format: ReportFormat) -> Exi
         ReportFormat::Json => format_report_json(&report),
     };
 
-    if let Err(e) = write_report_stdout(&output) {
+    if let Err(e) = write_stdout(&output) {
         eprintln!("newagt validate: write stdout: {e}");
         return ExitCode::from(1);
     }
@@ -118,21 +192,11 @@ fn run_validate(path: &Path, options: ParseOptions, format: ReportFormat) -> Exi
     }
 }
 
-fn write_report_stdout(text: &str) -> io::Result<()> {
+fn write_stdout(text: &str) -> io::Result<()> {
     let mut out = io::stdout().lock();
     out.write_all(text.as_bytes())?;
     if !text.ends_with('\n') {
         out.write_all(b"\n")?;
     }
     Ok(())
-}
-
-fn stub(subcommand: &str, profile: ParseProfile, path: &Path) -> ExitCode {
-    eprintln!(
-        "newagt {subcommand}: not yet implemented (core {}, profile: {}, path: {})",
-        VERSION,
-        profile,
-        path.display()
-    );
-    ExitCode::from(2)
 }

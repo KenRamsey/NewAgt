@@ -123,14 +123,14 @@
 
 ---
 
-## M7 — `dump` and `to-json`
+## M7 — `dump` and `to-json` (done)
 
 **Deliverables**
 
 - `dump`: indented tree, comments/keywords verbatim.
 - `to-json`: stable schema version `newagt.schema.v1` — containers, scalars, extensions[], spans optional.
 
-**Exit:** Round-trip read → JSON → (future write) not required yet.
+**Exit:** Round-trip read → JSON → (future write) not required yet. **Met** (`dump.rs`, `json_export.rs`, minimal `info`, CLI tests).
 
 ---
 
@@ -167,10 +167,10 @@
 
 | Command | Milestone |
 |---------|-----------|
-| `info` | M8/M10 — counts, paths, profile guess |
-| `dump` | M7 |
-| `validate` | M6 |
-| `to-json` | M7 |
+| `info` | M7 (minimal counts) / M10 batch |
+| `dump` | M7 ✓ |
+| `validate` | M6 ✓ |
+| `to-json` | M7 ✓ |
 
 ---
 
