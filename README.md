@@ -8,7 +8,7 @@ The on-disk format is documented starting from **`Agt-1992.pdf`** (legacy tree `
 
 ## Status
 
-Early development through **M8b** (`newagt dump`, `newagt to-json`, `newagt info`, `newagt frames`, `newagt bboxes`, and `Document::frames` / `Document::bboxes` in `newagt-core`).
+Early development through **M9** (Rust CLI + **`newagt` Python module** via PyO3: parse, validate, frames, bboxes; plus `newagt dump`, `to-json`, `info`, `frames`, `bboxes` CLI and `Document::frames` / `Document::bboxes` in `newagt-core`).
 
 - Format summary (from `Agt-1992.pdf`): [docs/agt-format-spec-1992.md](docs/agt-format-spec-1992.md)
 - Implementation milestones: [docs/agt-implementation-plan.md](docs/agt-implementation-plan.md)
@@ -35,6 +35,50 @@ cargo run --release -- info /path/to/file.agt
 | `info` | File path, profile, and section/update/target counts |
 
 Use `--profile agtj` (default) or `--profile pdf1999` on any subcommand.
+
+## Python (PyO3 / maturin)
+
+Install [maturin](https://www.maturin.rs/) and a Python ≥3.9 venv, then from the repo root:
+
+```bash
+# editable install (debug, fast iteration)
+maturin develop
+
+# release build (matches trainer performance expectations)
+maturin develop --release
+# or: maturin build --release
+```
+
+On Python 3.14+ you may need `PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1` (the crate builds with `abi3-py39`).
+
+```bash
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin develop --release
+```
+
+```python
+import newagt
+
+doc = newagt.parse("/path/to/file.agt")  # or inline AGT source string
+print(doc.summary())
+report = newagt.validate("/path/to/file.agt")
+frames = newagt.frames("/path/to/file.agt", heuristic=False)
+boxes = newagt.bboxes(
+    "/path/to/file.agt",
+    image_width=640,
+    image_height=480,
+    fov_h=30.0,
+    fov_v=20.0,
+    tgt_dat="/path/to/tgt.dat",
+    method="score",
+)
+```
+
+Columnar list helpers (no PyTorch dependency): `python/newagt/trainers.py`.
+
+```bash
+python -m pytest tests/test_newagt_py.py
+# or: python -m unittest tests.test_newagt_py
+```
 
 ## Development
 

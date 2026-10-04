@@ -168,12 +168,15 @@
 
 ---
 
-## M9 — Python / PyO3 (later)
+## M9 — Python / PyO3 (done)
 
 **Deliverables**
 
-- `pip install`able module exposing parse, validate, frame index, columnar export for trainers.
-- Map messy COMMENT/KEYWORD to canonical trainer columns in Python, not by lossy Rust normalization.
+- `newagt` PyO3 module (`crates/newagt-py`, maturin / `pyproject.toml`): `parse`, `validate`, `frames`, `bboxes`, `to_json`.
+- `python/newagt/trainers.py` columnar list helpers for PyTorch pipelines (no `torch` hard dep).
+- COMMENT/KEYWORD → trainer columns stays in Python helpers; Rust preserves raw extension text.
+
+**Exit:** `maturin develop --release`, `pytest tests/test_newagt_py.py` (or unittest). **Met.**
 
 ---
 

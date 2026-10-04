@@ -1,5 +1,11 @@
 # Rust / Cargo
 /target/
+/dist/
+.venv/
+
+# Python
+__pycache__/
+*.egg-info/
 **/*.rs.bk
 *.pdb
 

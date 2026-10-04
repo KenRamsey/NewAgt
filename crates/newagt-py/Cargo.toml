@@ -1,0 +1,17 @@
+[package]
+name = "newagt-py"
+version = "0.1.0"
+description = "PyO3 bindings for imagery ground truth AGT (newagt-core)"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "newagt_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+newagt-core = { path = "../newagt-core" }
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+pythonize = "0.23"
+serde_json = "1"

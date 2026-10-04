@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/newagt-core", "crates/newagt-cli"]
+members = ["crates/newagt-core", "crates/newagt-cli", "crates/newagt-py"]
 resolver = "2"
 
 [workspace.package]
