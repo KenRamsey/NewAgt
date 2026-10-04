@@ -81,7 +81,13 @@ impl<'src> Lexer<'src> {
         }
         let b = self.bytes[self.pos];
         self.pos += 1;
-        if b == b'\n' {
+        if b == b'\r' {
+            if self.peek() == Some(b'\n') {
+                self.pos += 1;
+            }
+            self.line += 1;
+            self.column = 1;
+        } else if b == b'\n' {
             self.line += 1;
             self.column = 1;
         } else {
@@ -99,9 +105,13 @@ impl<'src> Lexer<'src> {
     }
 
     fn skip_ws(&mut self) {
-        while matches!(self.peek(), Some(b' ' | b'\t' | b'\n')) {
+        while matches!(self.peek(), Some(b' ' | b'\t' | b'\n' | b'\r')) {
             self.bump();
         }
+    }
+
+    fn is_ident_continue(b: u8) -> bool {
+        b.is_ascii_alphanumeric() || b == b'_'
     }
 
     fn slice(&self, start: usize, end: usize) -> &'src str {
@@ -255,7 +265,10 @@ impl<'src> Lexer<'src> {
         }
         let start = self.pos;
         let span_start = self.current_span();
-        while self.peek().is_some_and(|b| b.is_ascii_alphabetic()) {
+        while self
+            .peek()
+            .is_some_and(|b| Self::is_ident_continue(b))
+        {
             self.bump();
         }
         let text = self.slice(start, self.pos);
@@ -392,5 +405,27 @@ mod unit_tests {
     fn extension_keyword_token() {
         let tokens = lex("Keyword").unwrap();
         assert_eq!(tokens[0].kind, TokenKind::Keyword(Keyword::Keyword));
+    }
+
+    #[test]
+    fn underscore_in_unknown_keyword() {
+        let tokens = lex("PLATFORM_LATITUDE 63.835").unwrap();
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(
+            tokens[0].kind,
+            TokenKind::UnknownKeyword("PLATFORM_LATITUDE".to_string())
+        );
+        assert!(matches!(tokens[1].kind, TokenKind::Real(_)));
+    }
+
+    #[test]
+    fn crlf_line_endings() {
+        let tokens = lex("Agt\r\n{\r\n}").unwrap();
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].kind, TokenKind::Keyword(Keyword::Agt));
+        assert_eq!(tokens[1].kind, TokenKind::LBrace);
+        assert_eq!(tokens[2].kind, TokenKind::RBrace);
+        assert_eq!(tokens[1].span.line, 2);
+        assert_eq!(tokens[2].span.line, 3);
     }
 }
