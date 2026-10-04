@@ -227,15 +227,22 @@ impl<'src> Lexer<'src> {
     }
 
     fn try_lex_integer(&mut self) -> Option<Result<Token, LexError>> {
-        if !self.peek().is_some_and(|b| b.is_ascii_digit()) {
+        let span_start = self.current_span();
+        let start = self.pos;
+        let bytes = self.bytes;
+        let mut i = start;
+        if i < bytes.len() && (bytes[i] == b'+' || bytes[i] == b'-') {
+            i += 1;
+        }
+        if i >= bytes.len() || !bytes[i].is_ascii_digit() {
             return None;
         }
-        let start = self.pos;
-        let span_start = self.current_span();
-        while self.peek().is_some_and(|b| b.is_ascii_digit()) {
-            self.bump();
+        while i < bytes.len() && bytes[i].is_ascii_digit() {
+            i += 1;
         }
-        let text = self.slice(start, self.pos);
+        let text = self.slice(start, i);
+        self.pos = i;
+        self.column = span_start.column + (i - start) as u32;
         match text.parse::<i64>() {
             Ok(v) => Some(Ok(Token::new(TokenKind::Integer(v), span_start))),
             Err(_) => Some(Err(LexError::IntegerOverflow { span: span_start })),
@@ -371,6 +378,14 @@ mod unit_tests {
         let tokens = lex("200 45.000000").unwrap();
         assert!(matches!(tokens[0].kind, TokenKind::Integer(200)));
         assert!(matches!(tokens[1].kind, TokenKind::Real(r) if (r - 45.0).abs() < f64::EPSILON));
+    }
+
+    #[test]
+    fn signed_integer_literals() {
+        let tokens = lex("-3 197 +42").unwrap();
+        assert!(matches!(tokens[0].kind, TokenKind::Integer(-3)));
+        assert!(matches!(tokens[1].kind, TokenKind::Integer(197)));
+        assert!(matches!(tokens[2].kind, TokenKind::Integer(42)));
     }
 
     #[test]
