@@ -35,7 +35,8 @@ pub use frames::{
     TargetFrameSide,
 };
 pub use info::{
-    format_info, format_info_batch_line, sections_present, summarize_document, DocumentSummary,
+    format_info, format_info_batch_line, format_info_batch_summary, sections_present,
+    summarize_document, DocumentSummary, InfoBatchStats,
 };
 pub use json_export::{
     export_document, export_parse_result, JsonExportOptions, JsonExportRoot, SCHEMA_V1,

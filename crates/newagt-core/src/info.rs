@@ -78,6 +78,28 @@ pub fn sections_present(summary: &DocumentSummary) -> String {
     }
 }
 
+/// Aggregate counts after a directory batch `info` run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct InfoBatchStats {
+    pub scanned: usize,
+    pub parse_ok: usize,
+    pub parse_fail: usize,
+    pub total_frames: u64,
+    pub warnings: usize,
+}
+
+/// One-line human summary for stderr after batch `info` (not TSV).
+pub fn format_info_batch_summary(stats: &InfoBatchStats) -> String {
+    let mut line = format!(
+        "newagt info: scanned {} files: parse ok {}, fail {}; total frames {}",
+        stats.scanned, stats.parse_ok, stats.parse_fail, stats.total_frames
+    );
+    if stats.warnings > 0 {
+        line.push_str(&format!("; warnings {}", stats.warnings));
+    }
+    format!("{line}\n")
+}
+
 /// One-line summary for batch `info` over a directory (tab-separated fields).
 pub fn format_info_batch_line(
     path: &str,
@@ -130,5 +152,34 @@ mod tests {
         assert_eq!(s.tgt_upd, 1);
         assert_eq!(s.tgt, 1);
         assert_eq!(s.prj_sect, 0);
+    }
+
+    #[test]
+    fn batch_summary_line_includes_counts() {
+        let stats = InfoBatchStats {
+            scanned: 10,
+            parse_ok: 9,
+            parse_fail: 1,
+            total_frames: 42,
+            warnings: 0,
+        };
+        let s = format_info_batch_summary(&stats);
+        assert!(s.contains("scanned 10 files"));
+        assert!(s.contains("parse ok 9, fail 1"));
+        assert!(s.contains("total frames 42"));
+        assert!(!s.contains("warnings"));
+    }
+
+    #[test]
+    fn batch_summary_includes_warnings_when_nonzero() {
+        let stats = InfoBatchStats {
+            scanned: 2,
+            parse_ok: 2,
+            parse_fail: 0,
+            total_frames: 4,
+            warnings: 3,
+        };
+        let s = format_info_batch_summary(&stats);
+        assert!(s.contains("warnings 3"));
     }
 }

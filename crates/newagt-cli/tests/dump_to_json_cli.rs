@@ -153,3 +153,59 @@ fn info_directory_limit_caps_output_lines() {
         2
     );
 }
+
+#[test]
+fn info_directory_prints_stderr_batch_summary() {
+    let root = std::env::temp_dir().join(format!("newagt-info-summary-{}", std::process::id()));
+    std::fs::create_dir_all(&root).expect("temp dir");
+    let src = fixture("minimal_agt_tgt.agt");
+    std::fs::copy(&src, root.join("one.agt")).expect("copy agt");
+
+    let output = Command::new(newagt_bin())
+        .args(["info", root.to_str().expect("utf8 path")])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .expect("run newagt info on directory");
+
+    let _ = std::fs::remove_dir_all(&root);
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("scanned 1 files"),
+        "stderr: {stderr}"
+    );
+    assert!(stderr.contains("parse ok 1, fail 0"));
+    assert!(stderr.contains("total frames"));
+}
+
+#[test]
+fn info_directory_progress_flag_emits_stderr_lines() {
+    let root = std::env::temp_dir().join(format!("newagt-info-progress-{}", std::process::id()));
+    std::fs::create_dir_all(&root).expect("temp dir");
+    let src = fixture("minimal_agt_tgt.agt");
+    for name in ["a.agt", "b.agt"] {
+        std::fs::copy(&src, root.join(name)).expect("copy agt");
+    }
+
+    let output = Command::new(newagt_bin())
+        .args([
+            "info",
+            root.to_str().expect("utf8 path"),
+            "--progress",
+            "1",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .expect("run newagt info --progress");
+
+    let _ = std::fs::remove_dir_all(&root);
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("progress 1/2"),
+        "stderr: {stderr}"
+    );
+    assert!(stderr.contains("progress 2/2"));
+}

@@ -36,7 +36,7 @@ find "$CORPUS_ROOT" -name '*.agt' 2>/dev/null | wc -l
 
 ## Directory mode: `newagt info` (M10)
 
-When `PATH` is a directory, `newagt info` **walks subdirectories by default** (`--recursive` is true) and prints **one tab-separated summary line per `.agt`**: path, frame count, sections present, parse ok/fail.
+When `PATH` is a directory, `newagt info` **walks subdirectories by default** (`--recursive` is true) and prints **one tab-separated summary line per `.agt`** on stdout: path, frame count, sections present, parse ok/fail. When the batch finishes, a **summary line on stderr** reports files scanned, parse ok/fail counts, sum of frame counts, and parse/index warning totals when non-zero.
 
 Single-file mode is unchanged (multi-line human summary).
 
@@ -60,6 +60,31 @@ find "$CORPUS_ROOT" -name '*.agt' 2>/dev/null | sort | head -n 20 | xargs -r new
 ```
 
 (`xargs` invokes `info` once **per file** in that pipeline; use `--limit` on a directory when you want one sorted walk and a single batch.)
+
+### Scattered layout
+
+When `.agt` files live at irregular depths under one mount (no classic `arf/` + `agt/` pairing), a single recursive directory batch is usually enough:
+
+```bash
+# Full inventory (stdout only — safe to redirect; no paths in git)
+newagt info "$CORPUS_ROOT" > ~/agt-corpus-scan.tsv
+
+# Sample first (recommended after parser changes)
+newagt info "$CORPUS_ROOT" --limit 50 > ~/agt-corpus-sample.tsv
+
+# Long runs: progress every 100 files on stderr (default interval when --progress is given alone)
+newagt info "$CORPUS_ROOT" --progress > ~/agt-corpus-scan.tsv 2> ~/agt-corpus-scan.log
+```
+
+After a run, **stderr** ends with a one-line batch summary (files scanned, parse ok/fail, total frames, optional warning count). **Stdout** stays one TSV line per file for piping.
+
+Filter failures offline (paths stay on your machine only):
+
+```bash
+awk -F'\t' '$0 ~ /parse: fail/ { print }' ~/agt-corpus-scan.tsv
+```
+
+Use `--limit N` for quick samples; omit `--limit` for a full pass over the sorted walk.
 
 ## Suggested workflows
 

@@ -6,8 +6,9 @@ use std::process::ExitCode;
 
 use newagt_core::{
     build_frame_index, dump_document, export_parse_result, format_frame_line, format_info,
-    format_info_batch_line, format_report_json, format_report_text, resolve_bboxes,
-    scan_classic_dataset_pairs, sections_present, summarize_document, validate, BboxMethod,
+    format_info_batch_line, format_info_batch_summary, format_report_json, format_report_text,
+    resolve_bboxes, scan_classic_dataset_pairs, sections_present, summarize_document, validate,
+    BboxMethod, InfoBatchStats,
     BBoxOptions, DatasetPairRow, FrameIndexOptions, JsonExportOptions, MissingSideFlags,
     ParseOptions, ParseProfile,
 };
@@ -92,6 +93,9 @@ enum Commands {
         /// When PATH is a directory, process at most N `.agt` files (after sorting paths).
         #[arg(long, value_name = "N")]
         limit: Option<usize>,
+        /// When PATH is a directory, print progress to stderr every N files (default N=100 when flag is given alone).
+        #[arg(long, value_name = "N", default_missing_value = "100", num_args = 0..=1)]
+        progress: Option<usize>,
     },
     /// List trainer frame index (one summary line per frame).
     Frames {
@@ -182,7 +186,16 @@ fn main() -> ExitCode {
             path,
             recursive,
             limit,
-        } => run_info(&path, profile, parse_opts, recursive, limit, cli.frame_count),
+            progress,
+        } => run_info(
+            &path,
+            profile,
+            parse_opts,
+            recursive,
+            limit,
+            progress,
+            cli.frame_count,
+        ),
         Commands::Frames { path, heuristic } => run_frames(&path, parse_opts, frame_opts(heuristic)),
         Commands::Dump { path } => run_dump(&path, parse_opts),
         Commands::Validate { path, format } => {
@@ -261,6 +274,7 @@ fn run_info(
     options: ParseOptions,
     recursive_flag: bool,
     limit: Option<usize>,
+    progress_every: Option<usize>,
     authority_frame_count: Option<u32>,
 ) -> ExitCode {
     let meta = match fs::metadata(path) {
@@ -272,11 +286,22 @@ fn run_info(
     };
 
     if meta.is_dir() {
-        return run_info_directory(path, options, recursive_flag, limit, authority_frame_count);
+        return run_info_directory(
+            path,
+            options,
+            recursive_flag,
+            limit,
+            progress_every,
+            authority_frame_count,
+        );
     }
 
     if limit.is_some() {
         eprintln!("newagt info: --limit applies only when PATH is a directory");
+        return ExitCode::from(2);
+    }
+    if progress_every.is_some() {
+        eprintln!("newagt info: --progress applies only when PATH is a directory");
         return ExitCode::from(2);
     }
 
@@ -288,6 +313,7 @@ fn run_info_directory(
     options: ParseOptions,
     recursive: bool,
     limit: Option<usize>,
+    progress_every: Option<usize>,
     authority_frame_count: Option<u32>,
 ) -> ExitCode {
     let mut files = Vec::new();
@@ -299,13 +325,28 @@ fn run_info_directory(
         files.truncate(n);
     }
 
+    let total = files.len();
     let mut text = String::new();
     let mut any_fail = false;
-    for file in &files {
+    let mut stats = InfoBatchStats {
+        scanned: total,
+        ..Default::default()
+    };
+
+    for (index, file) in files.iter().enumerate() {
+        let processed = index + 1;
+        if let Some(every) = progress_every {
+            if every > 0 && (processed % every == 0 || processed == total) {
+                eprintln!("newagt info: progress {processed}/{total}");
+            }
+        }
+
         let display = file.display().to_string();
         match fs::read_to_string(file) {
             Ok(source) => match newagt_core::parse_with_options(&source, options) {
                 Ok(result) => {
+                    stats.parse_ok += 1;
+                    stats.warnings += result.warnings.len();
                     let summary = summarize_document(&result.document);
                     let frames = build_frame_index(
                         &result.document,
@@ -314,6 +355,8 @@ fn run_info_directory(
                             ..FrameIndexOptions::DEFAULT
                         },
                     );
+                    stats.warnings += frames.warnings.len();
+                    stats.total_frames += frames.len() as u64;
                     text.push_str(&format_info_batch_line(
                         &display,
                         Some(frames.len()),
@@ -323,15 +366,19 @@ fn run_info_directory(
                 }
                 Err(_) => {
                     any_fail = true;
+                    stats.parse_fail += 1;
                     text.push_str(&format_info_batch_line(&display, None, "-", false));
                 }
             },
             Err(_) => {
                 any_fail = true;
+                stats.parse_fail += 1;
                 text.push_str(&format_info_batch_line(&display, None, "-", false));
             }
         }
     }
+
+    eprint!("{}", format_info_batch_summary(&stats));
 
     if write_stdout(&text).is_err() {
         return ExitCode::from(1);
