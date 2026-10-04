@@ -54,7 +54,7 @@
 
 ---
 
-## M2 — AST and PDF grammar parser
+## M2 — AST and PDF grammar parser (done)
 
 **Deliverables**
 
@@ -64,7 +64,7 @@
 
 **Tests:** Parse minimal `Agt { TgtSect { TgtUpd { Tgt { … } } } } }`; parse full Example 3 from PDF text fixture.
 
-**Exit:** `parse(&str) -> Result<Document, ParseError>` with structured errors (line, expected token).
+**Exit:** `parse(&str) -> Result<Document, ParseError>` with structured errors (line, expected token). **Met.**
 
 ---
 

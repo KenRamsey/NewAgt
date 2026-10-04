@@ -1,0 +1,20 @@
+Agt
+{
+  TgtSect
+  {
+    TgtUpd
+    {
+      Tgt
+      {
+        TgtType
+        "M1A1"
+        PixLoc
+        200 230
+        Aspect
+        45.000000
+        Range
+        1500.000000
+      }
+    }
+  }
+}

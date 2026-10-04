@@ -1,12 +1,16 @@
 //! Core library for parsing imagery ground truth AGT containers.
 
+pub mod ast;
 pub mod keyword;
 pub mod lex;
+pub mod parse;
 pub mod span;
 pub mod token;
 
+pub use ast::Document;
 pub use keyword::Keyword;
 pub use lex::{lex, lex_tokens, LexError, LexTokenIter};
+pub use parse::{parse, Found, ParseError};
 pub use span::Span;
 pub use token::{Token, TokenKind};
 

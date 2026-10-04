@@ -1,0 +1,141 @@
+//! Container AST for imagery AGT (PDF §6.2 placement rules).
+
+use crate::keyword::Keyword;
+use crate::span::Span;
+use crate::token::Token;
+
+/// Parsed document: exactly one root `Agt` container.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Document {
+    pub root: Agt,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Agt {
+    pub span: Span,
+    pub items: Vec<AgtItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AgtItem {
+    PrjSect(PrjSect),
+    SenSect(SenSect),
+    TgtSect(TgtSect),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrjSect {
+    pub span: Span,
+    pub items: Vec<PrjItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PrjItem {
+    Field(Field),
+    Unknown(UnknownField),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SenSect {
+    pub span: Span,
+    pub items: Vec<SenSectItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SenSectItem {
+    Field(Field),
+    SenUpd(SenUpd),
+    Unknown(UnknownField),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SenUpd {
+    pub span: Span,
+    pub items: Vec<SenUpdItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SenUpdItem {
+    Field(Field),
+    Unknown(UnknownField),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TgtSect {
+    pub span: Span,
+    pub items: Vec<TgtSectItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TgtSectItem {
+    Field(Field),
+    TgtUpd(TgtUpd),
+    Unknown(UnknownField),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TgtUpd {
+    pub span: Span,
+    pub items: Vec<TgtUpdItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TgtUpdItem {
+    Field(Field),
+    Tgt(Tgt),
+    Unknown(UnknownField),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tgt {
+    pub span: Span,
+    pub items: Vec<TgtItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TgtItem {
+    Field(Field),
+    TgtSenRel(TgtSenRel),
+    TgtAbs(TgtAbs),
+    Unknown(UnknownField),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TgtSenRel {
+    pub span: Span,
+    pub items: Vec<TgtSenRelItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TgtSenRelItem {
+    Field(Field),
+    Unknown(UnknownField),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TgtAbs {
+    pub span: Span,
+    pub items: Vec<TgtAbsItem>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TgtAbsItem {
+    Field(Field),
+    Unknown(UnknownField),
+}
+
+/// Scalar or composite field: keyword plus raw value tokens (M3 adds typing).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Field {
+    pub keyword: Keyword,
+    pub keyword_span: Span,
+    pub values: Vec<Token>,
+}
+
+/// Unrecognized keyword and trailing value tokens until the next sibling.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnknownField {
+    pub name: String,
+    pub keyword_span: Span,
+    pub values: Vec<Token>,
+}
