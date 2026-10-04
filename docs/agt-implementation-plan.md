@@ -112,14 +112,14 @@
 
 ---
 
-## M6 — `validate` subcommand
+## M6 — `validate` subcommand (done)
 
 **Deliverables**
 
 - Severity: **error** = unbalanced braces, unterminated string, unrecoverable parse; **warning** = unknown keyword, PDF placement oddities, duplicate singletons; **info** = missing optional sections.
 - JSON/text report; exit code 0 if loadable, non-zero only on structural failure.
 
-**Exit:** `newagt validate file.agt` useful on Ken’s corpus.
+**Exit:** `newagt validate file.agt` useful on Ken’s corpus. **Met.**
 
 ---
 

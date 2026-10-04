@@ -8,7 +8,7 @@ The on-disk format is documented starting from **`Agt-1992.pdf`** (legacy tree `
 
 ## Status
 
-Early development (M1 lexer in `newagt-core::lex`; parser M2 not started).
+Early development through **M6** (`newagt validate` reports loadability, warnings, and optional `--format json`).
 
 - Format summary (from `Agt-1992.pdf`): [docs/agt-format-spec-1992.md](docs/agt-format-spec-1992.md)
 - Implementation milestones: [docs/agt-implementation-plan.md](docs/agt-implementation-plan.md)
@@ -20,19 +20,18 @@ Early development (M1 lexer in `newagt-core::lex`; parser M2 not started).
 
 ```bash
 cargo build --release
-cargo run --release -- info /path/to/agt/container-or-dir
+cargo run --release -- validate /path/to/file.agt
+cargo run --release -- validate --format json /path/to/file.agt
 ```
-
-CLI subcommands (stubs for now):
 
 | Command | Purpose |
 |---------|---------|
-| `info` | Summarize discovered AGT inputs and layout hints |
-| `dump` | Human-readable dump of parsed structure |
-| `validate` | Report spec mismatches and structural issues |
-| `to-json` | Export structured JSON |
+| `validate` | Parse file and print a text or JSON validation report (exit 0 if loadable) |
+| `info` | Summarize discovered AGT inputs (stub) |
+| `dump` | Human-readable dump of parsed structure (stub) |
+| `to-json` | Export structured JSON (stub) |
 
-Each stub exits with code `2` and prints `not yet implemented`.
+Stubs exit with code `2` and print `not yet implemented`.
 
 ## Development
 

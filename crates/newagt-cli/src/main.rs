@@ -1,8 +1,12 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use newagt_core::{ParseOptions, ParseProfile, VERSION};
+use newagt_core::{
+    format_report_json, format_report_text, validate, ParseOptions, ParseProfile, VERSION,
+};
 
 #[derive(Parser)]
 #[command(
@@ -19,6 +23,12 @@ struct Cli {
     command: Commands,
 }
 
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum ReportFormat {
+    Text,
+    Json,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Summarize discovered AGT files and inferred version hints.
@@ -33,6 +43,9 @@ enum Commands {
     /// Cross-check ranges, pointers, and record sizes.
     Validate {
         path: PathBuf,
+        /// Report format: `text` (default) or `json`.
+        #[arg(long, value_enum, default_value = "text")]
+        format: ReportFormat,
     },
     /// Export structured JSON (schema not yet defined).
     ToJson {
@@ -55,12 +68,12 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let _parse_opts = ParseOptions { profile };
+    let parse_opts = ParseOptions { profile };
 
     match cli.command {
         Commands::Info { path } => stub("info", profile, &path),
         Commands::Dump { path } => stub("dump", profile, &path),
-        Commands::Validate { path } => stub("validate", profile, &path),
+        Commands::Validate { path, format } => run_validate(&path, parse_opts, format),
         Commands::ToJson { path, output } => {
             let target = output
                 .as_ref()
@@ -76,6 +89,42 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn run_validate(path: &Path, options: ParseOptions, format: ReportFormat) -> ExitCode {
+    let source = match fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("newagt validate: {}: {e}", path.display());
+            return ExitCode::from(1);
+        }
+    };
+
+    let report = validate(&source, options);
+    let output = match format {
+        ReportFormat::Text => format_report_text(&report),
+        ReportFormat::Json => format_report_json(&report),
+    };
+
+    if let Err(e) = write_report_stdout(&output) {
+        eprintln!("newagt validate: write stdout: {e}");
+        return ExitCode::from(1);
+    }
+
+    if report.loadable {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
+fn write_report_stdout(text: &str) -> io::Result<()> {
+    let mut out = io::stdout().lock();
+    out.write_all(text.as_bytes())?;
+    if !text.ends_with('\n') {
+        out.write_all(b"\n")?;
+    }
+    Ok(())
 }
 
 fn stub(subcommand: &str, profile: ParseProfile, path: &Path) -> ExitCode {
