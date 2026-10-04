@@ -147,6 +147,31 @@
 
 ---
 
+## M8b — Bounding boxes (trainer output)
+
+**Design:** Project store [bounding-boxes.md](/cursor/stores/bc-c9e90c2c-81b4-4ca5-b8ea-1dbe9dacbc0e/docs/bounding-boxes.md) (PixBox authoritative vs `tgt.dat` + geometry).
+
+**Deliverables**
+
+- `newagt-core::bbox`: load whitespace `tgt.dat`; `resolve_bboxes(doc, BBoxOptions) -> BBoxIndex`.
+- **Authoritative path:** copy `PixBox` from parsed `Tgt` when present (default: do not override).
+- **Computed path:** Score/`Abuse_Tgt.c` atan sizing centered on `PixLoc`; FOV cascade `SenUpd` → `SenSect` → CLI default; require `Range` + image size.
+- Extend frame index or bbox records with `Aspect`, `Range`, optional `PixBox` on `TargetEntry` (read path only).
+- CLI: `newagt bboxes --tgt-dat PATH --image-size W H [--default-fov H V] -o json`.
+- Fixture: `tests/fixtures/tgt.dat.snippet`; AGT snippets already carrying `PixBox` / `PixLoc`.
+
+**Tests**
+
+- PixBox-only resolution matches `prototype_tgt_sect_snippet.agt` integers.
+- One golden computed case (e.g. `M1` + known range/aspect/FOV/640×480) vs legacy reference.
+- Missing `tgt.dat` row / missing `Range` → warning, no box (no panic).
+
+**Depends:** M8 frame pairing; external image dimensions.
+
+**Exit:** Trainers can emit `[x1,y1,x2,y2]` per target per frame without a separate Python tgt pipeline.
+
+---
+
 ## M9 — Python / PyO3 (later)
 
 **Deliverables**
@@ -171,6 +196,7 @@
 |---------|-----------|
 | `info` | M7 (minimal counts) / M8 frames / M10 batch |
 | `frames` | M8 ✓ |
+| `bboxes` | M8b |
 | `dump` | M7 ✓ |
 | `validate` | M6 ✓ |
 | `to-json` | M7 ✓ |
