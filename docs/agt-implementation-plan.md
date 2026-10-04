@@ -134,7 +134,7 @@
 
 ---
 
-## M8 — Update / frame index (trainer-facing)
+## M8 — Update / frame index (trainer-facing) (done)
 
 **Deliverables**
 
@@ -142,6 +142,8 @@
 - API: `frames()` iterator with sensor pose, target list, timestamps, pix refs.
 
 **Depends:** Corpus validation; not PDF-specified.
+
+**Exit:** `newagt-core::frames`, `document.frames(options)`, `newagt info` frame count, `newagt frames`. **Met.**
 
 ---
 
@@ -167,7 +169,8 @@
 
 | Command | Milestone |
 |---------|-----------|
-| `info` | M7 (minimal counts) / M10 batch |
+| `info` | M7 (minimal counts) / M8 frames / M10 batch |
+| `frames` | M8 ✓ |
 | `dump` | M7 ✓ |
 | `validate` | M6 ✓ |
 | `to-json` | M7 ✓ |

@@ -1,0 +1,39 @@
+Agt
+ {
+  SenSect
+   {
+    SenUpd
+     {
+      Time      2005 256  9  9 56 637
+      Keyword  "Frame# 1"
+     }
+    SenUpd
+     {
+      Time      2005 256  9  9 57 100
+      Keyword  "Frame# 2"
+     }
+   }
+  TgtSect
+   {
+    TgtUpd
+     {
+      Time     2005 256  9  9 56 637
+      Keyword  "Frame# 1"
+      Tgt
+       {
+        Name     "t1"
+        PixLoc   10 20
+       }
+     }
+    TgtUpd
+     {
+      Time     2005 256  9  9 57 100
+      Keyword  "Frame# 2"
+      Tgt
+       {
+        Name     "t2"
+        PixLoc   30 40
+       }
+     }
+   }
+ }

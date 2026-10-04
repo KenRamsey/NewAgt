@@ -5,8 +5,9 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use newagt_core::{
-    dump_document, export_parse_result, format_info, format_report_json, format_report_text,
-    summarize_document, validate, JsonExportOptions, ParseOptions, ParseProfile,
+    build_frame_index, dump_document, export_parse_result, format_frame_line, format_info,
+    format_report_json, format_report_text, summarize_document, validate, FrameIndexOptions,
+    JsonExportOptions, ParseOptions, ParseProfile,
 };
 
 #[derive(Parser)]
@@ -35,6 +36,13 @@ enum Commands {
     /// Summarize AGT file path, profile, and section counts.
     Info {
         path: PathBuf,
+    },
+    /// List trainer frame index (one summary line per frame).
+    Frames {
+        path: PathBuf,
+        /// Pair updates using AGTJ-style Keyword/Comment frame hints when possible.
+        #[arg(long)]
+        heuristic: bool,
     },
     /// Human-readable indented dump of parsed structure.
     Dump {
@@ -75,6 +83,7 @@ fn main() -> ExitCode {
 
     match cli.command {
         Commands::Info { path } => run_info(&path, profile, parse_opts),
+        Commands::Frames { path, heuristic } => run_frames(&path, parse_opts, heuristic),
         Commands::Dump { path } => run_dump(&path, parse_opts),
         Commands::Validate { path, format } => run_validate(&path, parse_opts, format),
         Commands::ToJson { path, output, spans } => run_to_json(&path, parse_opts, output, spans),
@@ -96,7 +105,13 @@ fn run_info(path: &Path, profile: ParseProfile, options: ParseOptions) -> ExitCo
     match newagt_core::parse_with_options(&source, options) {
         Ok(result) => {
             let summary = summarize_document(&result.document);
-            let text = format_info(&path.display().to_string(), profile.as_str(), &summary);
+            let frames = build_frame_index(&result.document, FrameIndexOptions::DEFAULT);
+            let text = format_info(
+                &path.display().to_string(),
+                profile.as_str(),
+                &summary,
+                &frames,
+            );
             if write_stdout(&text).is_err() {
                 return ExitCode::from(1);
             }
@@ -104,6 +119,43 @@ fn run_info(path: &Path, profile: ParseProfile, options: ParseOptions) -> ExitCo
         }
         Err(e) => {
             eprintln!("newagt info: parse failed: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn run_frames(path: &Path, options: ParseOptions, heuristic: bool) -> ExitCode {
+    let source = match read_source(path) {
+        Ok(s) => s,
+        Err(code) => return code,
+    };
+    match newagt_core::parse_with_options(&source, options) {
+        Ok(result) => {
+            let index = build_frame_index(
+                &result.document,
+                FrameIndexOptions {
+                    use_agtj_heuristics: heuristic,
+                },
+            );
+            let mut text = String::new();
+            if !index.warnings.is_empty() {
+                for w in &index.warnings {
+                    text.push_str("warning: ");
+                    text.push_str(w);
+                    text.push('\n');
+                }
+            }
+            for frame in &index.frames {
+                text.push_str(&format_frame_line(frame));
+                text.push('\n');
+            }
+            if write_stdout(&text).is_err() {
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("newagt frames: parse failed: {e}");
             ExitCode::from(1)
         }
     }

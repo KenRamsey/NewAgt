@@ -3,6 +3,7 @@
 use crate::ast::{
     Agt, AgtItem, Document, SenSectItem, TgtSectItem, TgtUpdItem,
 };
+use crate::frames::{FrameIndex, PairingProvenance};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DocumentSummary {
@@ -51,16 +52,30 @@ fn summarize_agt(agt: &Agt) -> DocumentSummary {
     s
 }
 
+fn pairing_mode_label(mode: PairingProvenance) -> &'static str {
+    match mode {
+        PairingProvenance::Order => "order",
+        PairingProvenance::HeuristicAgTJ => "heuristic_agtj",
+    }
+}
+
 /// Human-readable summary lines.
-pub fn format_info(path: &str, profile: &str, summary: &DocumentSummary) -> String {
+pub fn format_info(
+    path: &str,
+    profile: &str,
+    summary: &DocumentSummary,
+    frames: &FrameIndex,
+) -> String {
     format!(
-        "path: {path}\nprofile: {profile}\nsections: PrjSect={} SenSect={} TgtSect={}\nupdates: SenUpd={} TgtUpd={}\ntargets: Tgt={}\n",
+        "path: {path}\nprofile: {profile}\nsections: PrjSect={} SenSect={} TgtSect={}\nupdates: SenUpd={} TgtUpd={}\ntargets: Tgt={}\nframes: count={} pairing={}\n",
         summary.prj_sect,
         summary.sen_sect,
         summary.tgt_sect,
         summary.sen_upd,
         summary.tgt_upd,
         summary.tgt,
+        frames.len(),
+        pairing_mode_label(frames.pairing_mode),
     )
 }
 

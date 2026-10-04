@@ -3,6 +3,7 @@
 pub mod ast;
 pub mod dump;
 pub mod extension;
+pub mod frames;
 pub mod info;
 pub mod json_export;
 pub mod keyword;
@@ -18,6 +19,10 @@ pub use ast::{Document, UnknownStatement};
 pub use dump::dump_document;
 pub use extension::{
     ExtensionRecord, ParseResult, ParseWarning, ParseWarningKind,
+};
+pub use frames::{
+    build_frame_index, format_frame_line, parse_frame_number, Frame, FrameIndex,
+    FrameIndexOptions, PairingProvenance, SensorFrameSide, TargetEntry, TargetFrameSide,
 };
 pub use info::{format_info, summarize_document, DocumentSummary};
 pub use json_export::{

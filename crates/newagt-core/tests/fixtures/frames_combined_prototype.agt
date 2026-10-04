@@ -1,0 +1,30 @@
+Agt
+ {
+  SenSect
+   {
+    Name     "vis1"
+    Fov      40.00 30.00
+    SenUpd
+     {
+      Time      2005 256  9  9 56 637
+      Fov       40.0 30.0
+      Azimuth   10.23
+      PixRange   10  10  43.4
+      Keyword  "Frame# 1"
+     }
+   }
+  TgtSect
+   {
+    TgtUpd
+     {
+      Time     2005 256  9  9 56 637
+      Keyword  "Frame# 1"
+      Tgt
+       {
+        TgtType     "TOY_PICKUP"
+        PixLoc      72 322
+        PixBox      62 317 82 327
+       }
+     }
+   }
+ }

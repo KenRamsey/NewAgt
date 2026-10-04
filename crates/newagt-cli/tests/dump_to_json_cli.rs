@@ -83,4 +83,5 @@ fn info_prints_section_counts() {
     assert!(stdout.contains("profile: agtj"));
     assert!(stdout.contains("TgtSect=1"));
     assert!(stdout.contains("Tgt=1"));
+    assert!(stdout.contains("frames: count="));
 }
