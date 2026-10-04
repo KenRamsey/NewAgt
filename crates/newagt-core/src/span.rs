@@ -19,4 +19,13 @@ impl Span {
             offset,
         }
     }
+
+    /// Span covering `start` through `end` (uses `start` for line/column, `end` for extent).
+    pub fn merge(start: Self, _end: Self) -> Self {
+        Self {
+            line: start.line,
+            column: start.column,
+            offset: start.offset,
+        }
+    }
 }

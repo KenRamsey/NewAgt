@@ -13,6 +13,7 @@ use crate::token::{Token, TokenKind};
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParseError {
     Lex(crate::lex::LexError),
+    Value(crate::value::ValueParseError),
     Unexpected {
         span: Span,
         expected: &'static str,
@@ -33,6 +34,7 @@ impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Lex(e) => write!(f, "lex error: {e}"),
+            Self::Value(e) => write!(f, "{e}"),
             Self::Unexpected {
                 span,
                 expected,
@@ -145,13 +147,15 @@ impl Parser {
         vals
     }
 
-    fn parse_field(&mut self, keyword: Keyword, keyword_span: Span) -> Field {
-        let values = self.consume_value_tokens();
-        Field {
+    fn parse_field(&mut self, keyword: Keyword, keyword_span: Span) -> Result<Field, ParseError> {
+        let tokens = self.consume_value_tokens();
+        let value = crate::value::parse_field_value(keyword, tokens.clone()).map_err(ParseError::Value)?;
+        Ok(Field {
             keyword,
             keyword_span,
-            values,
-        }
+            value,
+            tokens,
+        })
     }
 
     fn parse_unknown_field(&mut self, name: String, keyword_span: Span) -> UnknownField {
@@ -243,7 +247,7 @@ impl Parser {
                 | Keyword::LatLong
                 | Keyword::Comment
                 | Keyword::Keyword),
-            ) => Ok(PrjItem::Field(self.parse_field(kw, tok.span))),
+            ) => Ok(PrjItem::Field(self.parse_field(kw, tok.span)?)),
             TokenKind::UnknownKeyword(name) => {
                 Ok(PrjItem::Unknown(self.parse_unknown_field(name, tok.span)))
             }
@@ -283,10 +287,10 @@ impl Parser {
         let tok = self.bump();
         match tok.kind {
             TokenKind::Keyword(kw @ (Keyword::Comment | Keyword::Name | Keyword::Fov)) => {
-                Ok(SenSectItem::Field(self.parse_field(kw, tok.span)))
+                Ok(SenSectItem::Field(self.parse_field(kw, tok.span)?))
             }
             TokenKind::Keyword(Keyword::Keyword) => {
-                Ok(SenSectItem::Field(self.parse_field(Keyword::Keyword, tok.span)))
+                Ok(SenSectItem::Field(self.parse_field(Keyword::Keyword, tok.span)?))
             }
             TokenKind::UnknownKeyword(name) => {
                 Ok(SenSectItem::Unknown(self.parse_unknown_field(name, tok.span)))
@@ -326,7 +330,7 @@ impl Parser {
                 | Keyword::Range
                 | Keyword::PixRange
                 | Keyword::Keyword),
-            ) => Ok(SenUpdItem::Field(self.parse_field(kw, tok.span))),
+            ) => Ok(SenUpdItem::Field(self.parse_field(kw, tok.span)?)),
             TokenKind::UnknownKeyword(name) => {
                 Ok(SenUpdItem::Unknown(self.parse_unknown_field(name, tok.span)))
             }
@@ -366,7 +370,7 @@ impl Parser {
         let tok = self.bump();
         match tok.kind {
             TokenKind::Keyword(kw @ (Keyword::Comment | Keyword::Keyword)) => {
-                Ok(TgtSectItem::Field(self.parse_field(kw, tok.span)))
+                Ok(TgtSectItem::Field(self.parse_field(kw, tok.span)?))
             }
             TokenKind::UnknownKeyword(name) => {
                 Ok(TgtSectItem::Unknown(self.parse_unknown_field(name, tok.span)))
@@ -403,7 +407,7 @@ impl Parser {
         let tok = self.bump();
         match tok.kind {
             TokenKind::Keyword(kw @ (Keyword::Comment | Keyword::Time | Keyword::Keyword)) => {
-                Ok(TgtUpdItem::Field(self.parse_field(kw, tok.span)))
+                Ok(TgtUpdItem::Field(self.parse_field(kw, tok.span)?))
             }
             TokenKind::UnknownKeyword(name) => {
                 Ok(TgtUpdItem::Unknown(self.parse_unknown_field(name, tok.span)))
@@ -453,8 +457,9 @@ impl Parser {
                 | Keyword::Aspect
                 | Keyword::Range
                 | Keyword::PixLoc
+                | Keyword::PixBox
                 | Keyword::Keyword),
-            ) => Ok(TgtItem::Field(self.parse_field(kw, tok.span))),
+            ) => Ok(TgtItem::Field(self.parse_field(kw, tok.span)?)),
             TokenKind::UnknownKeyword(name) => {
                 Ok(TgtItem::Unknown(self.parse_unknown_field(name, tok.span)))
             }
@@ -490,7 +495,7 @@ impl Parser {
                 | Keyword::Obscuration
                 | Keyword::Comment
                 | Keyword::Keyword),
-            ) => Ok(TgtSenRelItem::Field(self.parse_field(kw, tok.span))),
+            ) => Ok(TgtSenRelItem::Field(self.parse_field(kw, tok.span)?)),
             TokenKind::UnknownKeyword(name) => Ok(TgtSenRelItem::Unknown(self.parse_unknown_field(
                 name,
                 tok.span,
@@ -528,7 +533,7 @@ impl Parser {
                 | Keyword::Roll
                 | Keyword::Comment
                 | Keyword::Keyword),
-            ) => Ok(TgtAbsItem::Field(self.parse_field(kw, tok.span))),
+            ) => Ok(TgtAbsItem::Field(self.parse_field(kw, tok.span)?)),
             TokenKind::UnknownKeyword(name) => {
                 Ok(TgtAbsItem::Unknown(self.parse_unknown_field(name, tok.span)))
             }
@@ -587,5 +592,12 @@ mod unit_tests {
         let src = "Agt { PrjSect { Name \"x\"";
         let err = parse(src).unwrap_err();
         assert!(matches!(err, ParseError::Unexpected { .. }));
+    }
+
+    #[test]
+    fn incomplete_time_field_is_value_error() {
+        let src = r#"Agt { PrjSect { Time 1992 140 16 } } }"#;
+        let err = parse(src).unwrap_err();
+        assert!(matches!(err, ParseError::Value(_)));
     }
 }

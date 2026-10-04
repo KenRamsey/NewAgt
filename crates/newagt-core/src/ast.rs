@@ -3,6 +3,7 @@
 use crate::keyword::Keyword;
 use crate::span::Span;
 use crate::token::Token;
+use crate::value::FieldValue;
 
 /// Parsed document: exactly one root `Agt` container.
 #[derive(Debug, Clone, PartialEq)]
@@ -124,12 +125,14 @@ pub enum TgtAbsItem {
     Unknown(UnknownField),
 }
 
-/// Scalar or composite field: keyword plus raw value tokens (M3 adds typing).
+/// Scalar or composite field: keyword plus typed value (raw token fallback when needed).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     pub keyword: Keyword,
     pub keyword_span: Span,
-    pub values: Vec<Token>,
+    pub value: FieldValue,
+    /// Lexed value tokens (preserves source spans for export).
+    pub tokens: Vec<Token>,
 }
 
 /// Unrecognized keyword and trailing value tokens until the next sibling.

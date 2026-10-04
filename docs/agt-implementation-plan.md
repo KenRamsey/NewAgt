@@ -68,7 +68,7 @@
 
 ---
 
-## M3 — Composite value parsing
+## M3 — Composite value parsing (done)
 
 **Deliverables**
 
@@ -76,6 +76,8 @@
 - Repeatable fields: multiple `Comment`, `PixRange`, `Tgt`, `TgtUpd`, `SenUpd`.
 
 **Tests:** Field order independence where grammar allows; reject only **structurally** incomplete composites (e.g. `LatLong` with 7 tokens).
+
+**M3 exit criteria:** `Field.value` typed via `newagt-core::value`; AGTJ 5-field `Utm` accepted when arity matches; `cargo test`, `cargo clippy -- -D warnings` clean. **Met.**
 
 ---
 
